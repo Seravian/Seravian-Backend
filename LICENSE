@@ -1,0 +1,25 @@
+Elastic License 2.0
+
+Copyright 2025 Seravian
+
+Elastic License 2.0 grants you the right to use and redistribute this software, subject to the terms below.
+
+1. Grant of Copyright License. Subject to the conditions and limitations stated in this License, you are hereby granted a non-exclusive, worldwide, royalty-free, revocable license to (a) use, copy, modify, create derivative works, and redistribute this software, in source and/or binary forms; and (b) make, use, and distribute an application programming interface that interfaces with the software, to the extent permissible under applicable copyright law.
+
+2. Disallowed Use. As a condition of the License, the grant provided in Section 1 does not include, and you are expressly prohibited from:
+   a. providing the software to third parties as a managed service, except as permitted under a separate license; and
+   b. using the software to provide a managed service offering.
+
+3. Compliance with Licenses. If you redistribute this software or modified versions thereof, you may do so only under the terms of this License. You must include a copy of this License with your redistribution, and you may not offer or impose any additional or different terms on the software that alter the rights or restrictions provided herein. You must include a complete copy of the source code of this software with your redistribution, except to the extent that the source code of the software is not provided to you under this License.
+
+4. Trademarks. This License does not grant you any rights in the trademarks, service marks, or logos of any party, including Elastic.
+
+5. Termination. If you fail to comply with this License, your rights under this License will terminate automatically.
+
+6. Disclaimer of Warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT OWNER OR AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. Limitation of Liability. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DAMAGES OF ANY KIND ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE.
+
+8. Other Provisions. If any term or provision of this License is determined to be invalid or unenforceable, the remainder of the License shall be interpreted to achieve, as closely as possible, the effect of the original term or provision. This License does not impair or restrict other rights you may have under applicable law.
+
+END OF TERMS
