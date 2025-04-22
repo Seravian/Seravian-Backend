@@ -1,12 +1,23 @@
-using Microsoft.AspNetCore.Builder;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using Seravian.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddConfigurations(builder.Configuration);
+builder.Services.AddRouting(options =>
+{
+    options.LowercaseUrls = true;
+});
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-builder.Services.AddCustomCors(builder.Environment.IsDevelopment());
+builder.Services.AddCustomCors(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
-// Add services to the container.
-
+builder.Services.AddScopedServices();
 builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -28,7 +39,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseCustomCors();
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
 app.MapControllers();
