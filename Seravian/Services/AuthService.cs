@@ -59,35 +59,16 @@ public class AuthService : IAuthService
     }
 
     // Refresh tokens (generate new ones)
-    public async Task RefreshTokensAsync(Guid userId, string refreshToken)
+
+    public async Task<bool> VerifyOtpAsync(string userEmail, string otpCode)
     {
-        // Validate the refresh token
-        var token = await _tokenService.GetRefreshTokenAsync(userId, refreshToken);
-
-        if (token == null || token.IsRevoked)
-        {
-            throw new Exception("Invalid or revoked refresh token.");
-        }
-
-        // Generate new tokens
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == token.UserId);
-        if (user == null)
-        {
-            throw new Exception("User not found.");
-        }
-
-        var tokens = await _tokenService.GenerateTokensAsync(user);
-    }
-
-    public async Task<bool> VerifyOtpAsync(Guid userId, string otpCode)
-    {
-        return await _otpService.ValidateOtpAsync(userId, otpCode);
+        return await _otpService.ValidateOtpAsync(userEmail, otpCode);
     }
 
     // Revoke the refresh token
-    public async Task RevokeRefreshTokenAsync(Guid userId, string refreshToken)
+    public async Task RevokeRefreshTokenAsync(string refreshToken)
     {
-        var token = await _tokenService.GetRefreshTokenAsync(userId, refreshToken);
+        var token = await _tokenService.GetRefreshTokenAsync(refreshToken);
 
         if (token == null)
         {
@@ -95,7 +76,7 @@ public class AuthService : IAuthService
         }
 
         // Mark the refresh token as revoked
-        await _tokenService.RevokeRefreshTokenAsync(userId, refreshToken);
+        await _tokenService.RevokeRefreshTokenAsync(refreshToken);
     }
 
     public async Task<LoginResponseDto> CompleteProfileSetupAsync(
@@ -170,6 +151,7 @@ public class AuthService : IAuthService
         }
         if (!user.IsEmailVerified)
         {
+            await _otpService.GenerateAndSendOtpAsync(user);
             return new LoginResponseDto
             {
                 UserId = user.Id,
@@ -234,8 +216,34 @@ public class AuthService : IAuthService
         };
     }
 
-    public Task RefreshTokensAsync(Guid userId, string accessToken, string refreshToken)
+    public async Task<AuthTokens> RefreshTokensAsync(string refreshToken)
     {
-        throw new NotImplementedException();
+        RefreshToken? token = await _tokenService.GetRefreshTokenAsync(refreshToken);
+
+        if (token == null || token.IsRevoked)
+        {
+            throw new Exception("Invalid or revoked refresh token.");
+        }
+        if (token.ExpiresAtUtc < DateTime.UtcNow)
+        {
+            throw new Exception("Refresh token has expired.");
+        }
+        var user = token.User;
+
+        await _tokenService.RevokeRefreshTokenAsync(token.Token);
+
+        return await _tokenService.GenerateTokensAsync(user);
+    }
+
+    public async Task ResendOtpAsync(string email)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user is null)
+            throw new Exception("User not found.");
+        if (user.IsEmailVerified)
+            throw new Exception("Email already verified.");
+
+        await _otpService.GenerateAndSendOtpAsync(user);
     }
 }

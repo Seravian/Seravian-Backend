@@ -11,5 +11,5 @@ public class LoginResponseDto
     public bool? IsDoctorVerified { get; set; } = null;
 
     public bool IsProfileSetupComplete { get; set; }
-    public AuthTokens Tokens { get; set; }
+    public AuthTokens? Tokens { get; set; }
 }

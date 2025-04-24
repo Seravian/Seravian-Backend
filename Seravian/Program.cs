@@ -9,10 +9,11 @@ builder.Services.AddRouting(options =>
 {
     options.LowercaseUrls = true;
 });
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddHostedService<CleanDbBackgroundService>();
 
 builder.Services.AddCustomCors(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
