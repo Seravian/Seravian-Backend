@@ -32,7 +32,7 @@ public static partial class ServiceCollectionExtensions
 
     public static IApplicationBuilder UseCustomCors(this IApplicationBuilder app)
     {
-        app.UseCors("CustomCorsPolicy");
+        app.UseCors("AllowFrontend");
         return app;
     }
 }
