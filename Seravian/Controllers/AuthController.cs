@@ -163,9 +163,15 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { Errors = validationResult.Errors.Select(x => x.ErrorMessage) });
         }
-
-        var token = await _authService.RefreshTokensAsync(request.RefreshToken);
-        return Ok(token);
+        try
+        {
+            var token = await _authService.RefreshTokensAsync(request.RefreshToken);
+            return Ok(token);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Errors = new List<string> { ex.Message } });
+        }
     }
 
     [HttpPost("logout")]
