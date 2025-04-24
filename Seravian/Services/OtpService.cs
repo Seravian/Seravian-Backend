@@ -65,11 +65,11 @@ public class OtpService : IOtpService
         await _emailSender.SendOtpEmailAsync(user.Email, newOtp, _otpSettings.ExpiryMinutes);
     }
 
-    public async Task<bool> ValidateOtpAsync(Guid userId, string code)
+    public async Task<bool> ValidateOtpAsync(string userEmail, string code)
     {
         User? user = await _context
             .Users.Include(x => x.EmailVerificationOtps)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Email == userEmail);
         if (user is null)
             throw new Exception("User not found.");
         if (user.IsEmailVerified)
@@ -77,10 +77,7 @@ public class OtpService : IOtpService
 
         var otp = user
             .EmailVerificationOtps.Where(x =>
-                x.UserId == userId
-                && x.Code == code
-                && !x.IsConsumed
-                && x.ExpiresAtUtc > DateTime.UtcNow
+                x.Code == code && !x.IsConsumed && x.ExpiresAtUtc > DateTime.UtcNow
             )
             .OrderByDescending(x => x.ExpiresAtUtc)
             .FirstOrDefault();

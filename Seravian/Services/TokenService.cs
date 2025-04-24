@@ -47,10 +47,10 @@ public class TokenService : ITokenService
         };
     }
 
-    public async Task RevokeRefreshTokenAsync(Guid userId, string refreshToken)
+    public async Task RevokeRefreshTokenAsync(string refreshToken)
     {
         var token = await _dbContext.RefreshTokens.FirstOrDefaultAsync(rt =>
-            rt.Token == refreshToken && !rt.IsRevoked && rt.UserId == userId
+            rt.Token == refreshToken && !rt.IsRevoked
         );
         if (token == null)
         {
@@ -58,15 +58,16 @@ public class TokenService : ITokenService
         }
 
         token.IsRevoked = true;
+
         await _dbContext.SaveChangesAsync();
     }
 
-    // Get Refresh Token by Token String
-    public async Task<RefreshToken?> GetRefreshTokenAsync(Guid userId, string token)
+    // ? Method to get the refresh token entity including the user
+    public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
     {
-        return await _dbContext.RefreshTokens.FirstOrDefaultAsync(rt =>
-            rt.Token == token && !rt.IsRevoked && rt.UserId == userId
-        );
+        return await _dbContext
+            .RefreshTokens.Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.Token == token && !rt.IsRevoked);
     }
 
     // Method to generate the access token (JWT)

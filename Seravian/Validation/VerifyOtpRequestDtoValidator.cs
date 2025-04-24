@@ -9,13 +9,14 @@ public class VerifyOtpRequestDtoValidator : AbstractValidator<VerifyOtpRequestDt
     {
         _otpLength = otpSettings.Value.OtpLength;
 
-        // Validate UserId (GUID)
-        RuleFor(x => x.UserId)
+        // Email validation
+        RuleFor(x => x.Email)
             .NotNull()
-            .NotEmpty()
-            .WithMessage("UserId is required.")
-            .Must(id => id != Guid.Empty)
-            .WithMessage("UserId cannot be empty.");
+            .WithMessage("Email is required.")
+            .EmailAddress()
+            .WithMessage("Invalid email format.")
+            .MaximumLength(100)
+            .WithMessage("Email must not exceed 100 characters.");
 
         // OTP validation with dynamic length from config
         RuleFor(x => x.OtpCode)

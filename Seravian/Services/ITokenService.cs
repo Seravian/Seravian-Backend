@@ -1,7 +1,7 @@
 public interface ITokenService
 {
     Task<AuthTokens> GenerateTokensAsync(User user);
-    Task RevokeRefreshTokenAsync(Guid userId, string refreshToken);
-    Task<RefreshToken?> GetRefreshTokenAsync(Guid userId, string token);
+    Task RevokeRefreshTokenAsync(string refreshToken);
+    Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken);
     AuthTokens GenerateAccessTokenWithoutRole(User user);
 }

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("[controller]")]
@@ -15,13 +14,17 @@ public class AuthController : ControllerBase
 
     private readonly IValidator<CompleteProfileSetupRequestDto> _completeProfileSetupRequestDtoValidator;
     private readonly IValidator<VerifyOtpRequestDto> _verifyOtpRequestDtoValidator;
+    private readonly IValidator<ResendOtpRequestDto> _resendOtpRequestDtoValidator;
+    private readonly IValidator<RefreshTokenRequestDto> _refreshTokenRequestDtoValidator;
 
     public AuthController(
         IAuthService authService,
         IValidator<RegisterRequestDto> registerRequestDtoValidator,
         IValidator<LoginRequestDto> loginRequestDtoValidator,
         IValidator<CompleteProfileSetupRequestDto> completeProfileSetupRequestDtoValidator,
-        IValidator<VerifyOtpRequestDto> verifyOtpRequestDtoValidator
+        IValidator<VerifyOtpRequestDto> verifyOtpRequestDtoValidator,
+        IValidator<ResendOtpRequestDto> resendOtpRequestDtoValidator,
+        IValidator<RefreshTokenRequestDto> refreshTokenRequestDtoValidator
     )
     {
         _authService = authService;
@@ -29,6 +32,8 @@ public class AuthController : ControllerBase
         _loginRequestDtoValidator = loginRequestDtoValidator;
         _completeProfileSetupRequestDtoValidator = completeProfileSetupRequestDtoValidator;
         _verifyOtpRequestDtoValidator = verifyOtpRequestDtoValidator;
+        _resendOtpRequestDtoValidator = resendOtpRequestDtoValidator;
+        _refreshTokenRequestDtoValidator = refreshTokenRequestDtoValidator;
     }
 
     [HttpPost("login")]
@@ -71,6 +76,26 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("resend-otp")]
+    public async Task<IActionResult> ResendOtpAsync(ResendOtpRequestDto request)
+    {
+        var validationResult = _resendOtpRequestDtoValidator.Validate(request);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(new { Errors = validationResult.Errors.Select(x => x.ErrorMessage) });
+        }
+        var userEmail = request.Email;
+        try
+        {
+            await _authService.ResendOtpAsync(userEmail);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Errors = new List<string> { ex.Message } });
+        }
+    }
+
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtpAsync(VerifyOtpRequestDto request)
     {
@@ -79,12 +104,12 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { Errors = validationResult.Errors.Select(x => x.ErrorMessage) });
         }
-        var userId = request.UserId;
+        var userEmail = request.Email;
         var otpCode = request.OtpCode;
         bool isValid;
         try
         {
-            isValid = await _authService.VerifyOtpAsync(userId, otpCode);
+            isValid = await _authService.VerifyOtpAsync(userEmail, otpCode);
         }
         catch (Exception ex)
         {
@@ -130,14 +155,26 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshTokensAsync(RefreshTokenRequestDto request)
+    {
+        var validationResult = _refreshTokenRequestDtoValidator.Validate(request);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(new { Errors = validationResult.Errors.Select(x => x.ErrorMessage) });
+        }
+
+        var token = await _authService.RefreshTokensAsync(request.RefreshToken);
+        return Ok(token);
+    }
+
     [HttpPost("logout")]
-    [Authorize]
+    [Authorize(Roles = "Doctor,Patient,Admin")]
     public async Task<IActionResult> LogoutAsync(LogoutRequestDto request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); //userId
         try
         {
-            await _authService.RevokeRefreshTokenAsync(Guid.Parse(userId), request.RefreshToken);
+            await _authService.RevokeRefreshTokenAsync(request.RefreshToken);
             return NoContent();
         }
         catch (Exception ex)
