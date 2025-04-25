@@ -87,6 +87,7 @@ public class OtpService : IOtpService
 
         otp.IsConsumed = true;
         user.IsEmailVerified = true;
+        user.EmailVerifiedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return true;
