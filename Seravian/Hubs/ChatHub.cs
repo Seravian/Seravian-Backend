@@ -72,7 +72,11 @@ public class ChatHub : Hub
             .OthersInGroup(chatId.ToString())
             .SendAsync(
                 "receive-client-request",
-                new ReceiveClientRequestDto { Message = request.Message, TimeUtc = receiveTimeUtc }
+                new ReceiveClientRequestDto
+                {
+                    Message = request.Message,
+                    TimestampUtc = receiveTimeUtc,
+                }
             );
 
         var message = new ChatMessage
