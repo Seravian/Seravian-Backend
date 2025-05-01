@@ -1,7 +1,9 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Cms;
 using Scalar.AspNetCore;
 using Seravian.Extensions;
+using Seravian.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddConfigurations(builder.Configuration);
@@ -20,6 +22,8 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 
 builder.Services.AddScopedServices();
 builder.Services.AddControllers();
+
+builder.Services.AddSignalR();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -42,5 +46,12 @@ app.UseCustomCors();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
+app.MapHub<ChatHub>(
+    "hubs/chat",
+    options =>
+    {
+        options.CloseOnAuthenticationExpiration = true;
+    }
+);
 app.MapControllers();
 app.Run();
