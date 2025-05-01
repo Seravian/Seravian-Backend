@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Asn1.Cms;
 using Scalar.AspNetCore;
@@ -46,12 +47,6 @@ app.UseCustomCors();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-app.MapHub<ChatHub>(
-    "hubs/chat",
-    options =>
-    {
-        options.CloseOnAuthenticationExpiration = true;
-    }
-);
+app.MapSignalRHubs();
 app.MapControllers();
 app.Run();

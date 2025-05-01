@@ -1,7 +1,17 @@
+using Seravian.Hubs;
+
 public static class WebApplicationBuilderExtensions
 {
-    public static WebApplication AddSignalRHubs(this WebApplication webApplication)
+    public static WebApplication MapSignalRHubs(this WebApplication app)
     {
-        throw new NotImplementedException("SignalR Hubs are not implemented yet.");
+        app.MapHub<ChatHub>(
+            "hubs/chat",
+            options =>
+            {
+                options.CloseOnAuthenticationExpiration = true;
+            }
+        );
+
+        return app;
     }
 }
