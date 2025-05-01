@@ -55,7 +55,6 @@ public class ChatHub : Hub
             // If the chat is deleted, remove the connection from the map
             _connectionUserMap.Remove(Context.ConnectionId, out _);
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId.ToString());
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId.ToString());
 
             // Find all keys that have the specified value
             var keysToRemove = _connectionUserMap
@@ -93,26 +92,4 @@ public class ChatHub : Hub
         //         new ReceiveAIResponseDto { Message = message.Message, TimeUtc = DateTime.UtcNow }
         //     );
     }
-}
-
-public class JoinChatDto
-{
-    public Guid ChatId { get; set; }
-}
-
-public class SendClientRequestDto
-{
-    public string Message { get; set; }
-}
-
-public class ReceiveClientRequestDto
-{
-    public string Message { get; set; }
-    public DateTime TimeUtc { get; set; }
-}
-
-public class ReceiveAIResponseDto
-{
-    public string Message { get; set; }
-    public DateTime TimeUtc { get; set; }
 }
