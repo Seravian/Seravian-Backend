@@ -184,34 +184,4 @@ public class ChatController : ControllerBase
 
         return Ok(response);
     }
-
-    [HttpGet("get-chats-messages")]
-    public async Task<IActionResult> GetChatsMessagesAsync()
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-        var chats = await _dbContext
-            .Chats.Include(c => c.ChatMessages)
-            .Where(c => c.PatientId == userId && !c.IsDeleted)
-            .OrderByDescending(c => c.CreatedAtUtc)
-            .Select(c => new GetChatMessagesResponseDto
-            {
-                Id = c.Id,
-                Title = c.Title,
-                CreatedAt = c.CreatedAtUtc,
-                Messages = c
-                    .ChatMessages.Where(m => !m.IsDeleted)
-                    .OrderBy(m => m.TimestampUtc)
-                    .Select(m => new ChatMessageDto
-                    {
-                        Content = m.Content,
-                        TimestampUtc = m.TimestampUtc,
-                        IsAI = m.IsAI,
-                    })
-                    .ToList(),
-            })
-            .ToListAsync();
-
-        return Ok(chats);
-    }
 }
