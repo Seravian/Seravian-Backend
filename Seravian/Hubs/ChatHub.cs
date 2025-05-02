@@ -96,6 +96,7 @@ public class ChatHub : Hub
                 "receive-client-request",
                 new ReceiveClientRequestDto
                 {
+                    Id = message.Id,
                     Message = request.Message,
                     TimestampUtc = receiveTimeUtc,
                 }
@@ -105,7 +106,10 @@ public class ChatHub : Hub
         //     .Group(chatId.ToString())
         //     .SendAsync(
         //         "receive-ai-response",
-        //         new ReceiveAIResponseDto { Message = message.Message, TimeUtc = DateTime.UtcNow }
+        //         new ReceiveAIResponseDto
+        //         {
+        //
+        //         }
         //     );
     }
 }
