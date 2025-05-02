@@ -129,7 +129,7 @@ public class ChatController : ControllerBase
     }
 
     [HttpGet("get-chats")]
-    public async Task<IActionResult> GetChatsAsync()
+    public async Task<ActionResult<GetChatResponseDto>> GetChatsAsync()
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
@@ -157,7 +157,8 @@ public class ChatController : ControllerBase
         var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
         var chat = await _dbContext
-            .Chats.AsNoTracking()
+            .Chats.Include(C => C.ChatMessages)
+            .AsNoTracking()
             .Where(c => c.Id == request.Id && c.PatientId == patientId && !c.IsDeleted)
             .FirstOrDefaultAsync();
 
@@ -165,6 +166,7 @@ public class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
         }
+
         var response = new GetChatMessagesResponseDto
         {
             Id = chat.Id,
@@ -175,6 +177,7 @@ public class ChatController : ControllerBase
                 .OrderBy(m => m.TimestampUtc)
                 .Select(m => new ChatMessageDto
                 {
+                    Id = m.Id,
                     Content = m.Content,
                     TimestampUtc = m.TimestampUtc,
                     IsAI = m.IsAI,
@@ -183,5 +186,45 @@ public class ChatController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    [HttpGet("sync-messages")]
+    public async Task<ActionResult<List<ChatMessageDto>>> SyncMessagesAsync(
+        SyncMessagesRequestDto request
+    )
+    {
+        if (request.ChatId == null || request.ChatId == Guid.Empty)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat ID is required." } });
+        }
+
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+        var chat = await _dbContext
+            .Chats.Include(C => C.ChatMessages)
+            .AsNoTracking()
+            .Where(c => c.Id == request.ChatId && c.PatientId == patientId && !c.IsDeleted)
+            .FirstOrDefaultAsync();
+
+        if (chat is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+
+        var messages = chat
+            .ChatMessages.Where(m =>
+                m.TimestampUtc > request.LastMessageTimestampUtc && !m.IsDeleted
+            )
+            .OrderBy(m => m.TimestampUtc)
+            .Select(m => new ChatMessageDto
+            {
+                Id = m.Id,
+                Content = m.Content,
+                TimestampUtc = m.TimestampUtc,
+                IsAI = m.IsAI,
+            })
+            .ToList();
+
+        return Ok(messages);
     }
 }

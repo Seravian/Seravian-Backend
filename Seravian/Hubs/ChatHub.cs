@@ -68,6 +68,28 @@ public class ChatHub : Hub
             return;
         }
 
+        var message = new ChatMessage
+        {
+            TimestampUtc = receiveTimeUtc,
+            ChatId = chatId,
+            Content = request.Message,
+        };
+
+        await _applicationDbContext.ChatsMessages.AddAsync(message);
+        await _applicationDbContext.SaveChangesAsync();
+
+        await Clients
+            .Client(Context.ConnectionId)
+            .SendAsync(
+                "confirm-client-request",
+                new ConfirmClientRequestDto
+                {
+                    MessageId = message.Id,
+                    ClientMessageId = request.MessageClientId,
+                    TimestampUtc = receiveTimeUtc,
+                }
+            );
+
         await Clients
             .OthersInGroup(chatId.ToString())
             .SendAsync(
@@ -78,16 +100,6 @@ public class ChatHub : Hub
                     TimestampUtc = receiveTimeUtc,
                 }
             );
-
-        var message = new ChatMessage
-        {
-            TimestampUtc = receiveTimeUtc,
-            ChatId = chatId,
-            Content = request.Message,
-        };
-
-        await _applicationDbContext.ChatsMessages.AddAsync(message);
-        await _applicationDbContext.SaveChangesAsync();
 
         // await Clients
         //     .Group(chatId.ToString())
