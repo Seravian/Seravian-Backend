@@ -28,4 +28,11 @@
   
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\ChatHub\" />
+    <Folder Include="Services\Chat\" />
+    <Folder Include="Validation\Chat\" />
+    <Folder Include="Validation\ChatHub\" />
+  </ItemGroup>
+
 </Project>
