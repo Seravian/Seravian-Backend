@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Seravian.Hubs;
 
-[Authorize]
+[Authorize(Roles = "Patient")]
 public class ChatHub : Hub
 {
     private static readonly ConcurrentDictionary<string, Guid> _connectionUserMap = new();
