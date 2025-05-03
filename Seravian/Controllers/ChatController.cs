@@ -148,7 +148,9 @@ public class ChatController : ControllerBase
     }
 
     [HttpGet("get-chat-messages")]
-    public async Task<IActionResult> GetChatMessagesAsync(GetChatMessagesRequestDto request)
+    public async Task<IActionResult> GetChatMessagesAsync(
+        [FromQuery] GetChatMessagesRequestDto request
+    )
     {
         if (request.Id == null || request.Id == Guid.Empty)
         {
@@ -190,7 +192,7 @@ public class ChatController : ControllerBase
 
     [HttpGet("sync-messages")]
     public async Task<ActionResult<List<ChatMessageDto>>> SyncMessagesAsync(
-        SyncMessagesRequestDto request
+        [FromQuery] SyncMessagesRequestDto request
     )
     {
         if (request.ChatId == null || request.ChatId == Guid.Empty)

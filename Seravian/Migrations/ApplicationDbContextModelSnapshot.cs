@@ -28,7 +28,7 @@ namespace Seravian.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("Admins");
+                    b.ToTable("Admins", (string)null);
                 });
 
             modelBuilder.Entity("Chat", b =>
@@ -102,7 +102,7 @@ namespace Seravian.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("Doctors");
+                    b.ToTable("Doctors", (string)null);
                 });
 
             modelBuilder.Entity("EmailVerificationOtp", b =>
@@ -129,7 +129,7 @@ namespace Seravian.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("EmailVerificationOtpCodes");
+                    b.ToTable("EmailVerificationOtpCodes", (string)null);
                 });
 
             modelBuilder.Entity("Patient", b =>
@@ -139,7 +139,7 @@ namespace Seravian.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("Patients");
+                    b.ToTable("Patients", (string)null);
                 });
 
             modelBuilder.Entity("RefreshToken", b =>
@@ -165,7 +165,7 @@ namespace Seravian.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("User", b =>
@@ -220,7 +220,7 @@ namespace Seravian.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Admin", b =>
