@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Seravian.Hubs;
 
 [Authorize(Roles = "Patient")]
-public class ChatHub : Hub
+public class ChatHub : Hub<IChatHubClient>
 {
     private static readonly ConcurrentDictionary<string, Guid> _connectionUserMap = new();
     private readonly ApplicationDbContext _applicationDbContext;
@@ -36,7 +36,9 @@ public class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var chatId = _connectionUserMap[Context.ConnectionId];
+        var sucedded = _connectionUserMap.TryGetValue(Context.ConnectionId, out var chatId);
+        if (!sucedded)
+            return;
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId.ToString());
         _connectionUserMap.Remove(Context.ConnectionId, out _);
     }
@@ -80,8 +82,7 @@ public class ChatHub : Hub
 
         await Clients
             .Client(Context.ConnectionId)
-            .SendAsync(
-                "confirm-client-request",
+            .ConfirmClientRequestAsync(
                 new ConfirmClientRequestDto
                 {
                     MessageId = message.Id,
@@ -92,8 +93,7 @@ public class ChatHub : Hub
 
         await Clients
             .OthersInGroup(chatId.ToString())
-            .SendAsync(
-                "receive-client-request",
+            .ReceiveClientRequestAsync(
                 new ReceiveClientRequestDto
                 {
                     Id = message.Id,
@@ -102,14 +102,29 @@ public class ChatHub : Hub
                 }
             );
 
-        // await Clients
-        //     .Group(chatId.ToString())
-        //     .SendAsync(
-        //         "receive-ai-response",
-        //         new ReceiveAIResponseDto
-        //         {
-        //
-        //         }
-        //     );
+        await Task.Delay(TimeSpan.FromSeconds(3)); // Simulate some delay for the AI response
+
+        await Clients
+            .Group(chatId.ToString())
+            .ReceiveAIResponseAsync(
+                new ReceiveAIResponseDto
+                {
+                    Id = Random.Shared.Next(1, 1000),
+                    Message = "This is a test message from the ai response",
+                    TimestampUtc = receiveTimeUtc,
+                }
+            );
     }
+}
+
+public interface IChatHubClient
+{
+    [HubMethodName("confirm-client-request")]
+    Task ConfirmClientRequestAsync(ConfirmClientRequestDto request);
+
+    [HubMethodName("receive-client-request")]
+    Task ReceiveClientRequestAsync(ReceiveClientRequestDto request);
+
+    [HubMethodName("receive-ai-response")]
+    Task ReceiveAIResponseAsync(ReceiveAIResponseDto request);
 }
