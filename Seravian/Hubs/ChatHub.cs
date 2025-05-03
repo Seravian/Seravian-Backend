@@ -36,8 +36,11 @@ public class ChatHub : Hub<IChatHubClient>
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var sucedded = _connectionUserMap.TryGetValue(Context.ConnectionId, out var chatId);
-        if (!sucedded)
+        var isConnectionExistsInMap = _connectionUserMap.TryGetValue(
+            Context.ConnectionId,
+            out var chatId
+        );
+        if (!isConnectionExistsInMap)
             return;
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId.ToString());
         _connectionUserMap.Remove(Context.ConnectionId, out _);
