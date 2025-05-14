@@ -1,5 +1,3 @@
-using OneOf;
-
 public interface IAuthService
 {
     public Task<RegisterResponseDto> RegisterAsync(RegisterRequestDto registerDto);
