@@ -20,13 +20,6 @@ class ChatMessagem : IEntityTypeConfiguration<ChatMessageMedia>
 
         builder.Property(m => m.MimeType).HasMaxLength(100);
 
-        builder.Property(m => m.FileSizeInBytes);
-
-        builder.Property(m => m.Transcription);
-        builder.Property(m => m.SEREmotionAnalysis);
-        builder.Property(m => m.FaceAnalysis);
-        builder.Property(m => m.CombinedAnalysisResult);
-
         // Relationship with ChatMessage (1-to-1)
         builder
             .HasOne(m => m.Message)
