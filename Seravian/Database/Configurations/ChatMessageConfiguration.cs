@@ -21,6 +21,19 @@ class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
             .HasForeignKey(cm => cm.ChatId)
             .OnDelete(DeleteBehavior.Cascade); // or DeleteBehavior.Restrict if you prefer
 
+        // Relationship with ChatMessageMedia (1-to-1)
+        builder
+            .HasOne(m => m.Media)
+            .WithOne(med => med.Message)
+            .HasForeignKey<ChatMessageMedia>(med => med.MessageId)
+            .OnDelete(DeleteBehavior.Cascade); // Optional: Cascade delete when ChatMessage is deleted
+
+        // Relationship with ChatVoiceAnalysis (1-to-1)
+        builder
+            .HasOne(m => m.VoiceAnalysis)
+            .WithOne(va => va.Message)
+            .HasForeignKey<ChatVoiceAnalysis>(va => va.MessageId)
+            .OnDelete(DeleteBehavior.Cascade); // Optional: Cascade delete when C
         // Content is required and has a max length (for storage optimization)
         builder.Property(cm => cm.Content).IsRequired().HasMaxLength(1000); // Adjust max length as necessary
 
