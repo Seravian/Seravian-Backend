@@ -13,6 +13,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Chat> Chats { get; set; }
+    public DbSet<ChatMessageMedia> ChatsMessagesMedias { get; set; }
+    public DbSet<ChatVoiceAnalysis> ChatVoiceAnalyses { get; set; }
     public DbSet<ChatMessage> ChatsMessages { get; set; }
     public DbSet<EmailVerificationOtp> EmailVerificationOtpCodes { get; set; }
     public DbSet<User> Users { get; set; }
