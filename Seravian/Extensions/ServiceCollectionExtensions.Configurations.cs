@@ -14,6 +14,10 @@ public static partial class ServiceCollectionExtensions
         services.Configure<EmailSettings>(configurations.GetSection("Email"));
         services.Configure<OtpSettings>(configurations.GetSection("Otp"));
         services.Configure<JwtSettings>(configurations.GetSection("Jwt"));
+        services.Configure<LLMSettings>(configurations.GetSection("AI:LLM"));
+        services.Configure<SERAndSTTSettings>(configurations.GetSection("AI:SERAndSTT"));
+        services.Configure<DeepFaceSettings>(configurations.GetSection("AI:DeepFace"));
+        services.Configure<TTSSettings>(configurations.GetSection("AI:TTS"));
         return services;
     }
 }

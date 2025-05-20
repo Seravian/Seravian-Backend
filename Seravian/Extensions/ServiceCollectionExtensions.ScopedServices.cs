@@ -1,5 +1,18 @@
+using TestAIModels;
+
 public static partial class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddSingletonServices(this IServiceCollection services)
+    {
+        services.AddSingleton<ChatProcessingManager>();
+        services.AddSingleton<LLMService>();
+        services.AddSingleton<AudioService>();
+        services.AddSingleton<DeepFaceService>();
+        services.AddSingleton<TTSService>();
+
+        return services;
+    }
+
     public static IServiceCollection AddScopedServices(this IServiceCollection services)
     {
         services.AddScoped<IEmailSender, EmailSender>();

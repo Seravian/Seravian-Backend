@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using TestAIModels;
 
 namespace Seravian.Hubs;
 
@@ -10,11 +11,24 @@ namespace Seravian.Hubs;
 public class ChatHub : Hub<IChatHubClient>
 {
     private static readonly ConcurrentDictionary<string, Guid> _connectionUserMap = new();
+    private readonly ChatProcessingManager _llmProcessingManager;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+
+    private readonly LLMService _llmService;
+
     private readonly ApplicationDbContext _applicationDbContext;
 
-    public ChatHub(ApplicationDbContext applicationDbContext)
+    public ChatHub(
+        ChatProcessingManager llmProcessingManager,
+        LLMService llmService,
+        ApplicationDbContext applicationDbContext,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory
+    )
     {
+        _llmProcessingManager = llmProcessingManager;
+        _llmService = llmService;
         _applicationDbContext = applicationDbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     [HubMethodName("join-chat")]
@@ -47,11 +61,14 @@ public class ChatHub : Hub<IChatHubClient>
     }
 
     [HubMethodName("send-client-request")]
-    public async Task SendClientRequest(SendClientRequestDto request)
+    public async Task<bool> SendClientRequest(SendClientRequestDto request)
     {
         var receiveTimeUtc = DateTime.UtcNow;
+        if (string.IsNullOrEmpty(request.Message))
+            return true;
+
         if (!_connectionUserMap.TryGetValue(Context.ConnectionId, out var chatId))
-            return;
+            return true;
 
         if (
             !await _applicationDbContext.Chats.AnyAsync(c => c.Id == chatId && c.IsDeleted == false)
@@ -70,7 +87,12 @@ public class ChatHub : Hub<IChatHubClient>
             {
                 _connectionUserMap.Remove(key, out _); // Removes the entry from the dictionary
             }
-            return;
+            return true;
+        }
+
+        if (!await _llmProcessingManager.TryLock(chatId))
+        {
+            return false;
         }
 
         var message = new ChatMessage
@@ -105,18 +127,50 @@ public class ChatHub : Hub<IChatHubClient>
                 }
             );
 
-        await Task.Delay(TimeSpan.FromSeconds(3)); // Simulate some delay for the AI response
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var response = await _llmService.SendMessageToLLMAsync(
+                    request.Message,
+                    chatId.ToString()
+                );
+                var aiResponseReceivedTimeUtc = DateTime.UtcNow;
 
-        await Clients
-            .Group(chatId.ToString())
-            .ReceiveAIResponseAsync(
-                new ReceiveAIResponseDto
+                var aiResponse = new ChatMessage
                 {
-                    Id = Random.Shared.Next(1, 1000),
-                    Message = "This is a test message from the ai response",
-                    TimestampUtc = receiveTimeUtc,
-                }
-            );
+                    TimestampUtc = aiResponseReceivedTimeUtc,
+                    ChatId = chatId,
+                    Content = response,
+                    IsAI = true,
+                };
+
+                using var dbContext = _dbContextFactory.CreateDbContext();
+
+                await dbContext.ChatsMessages.AddAsync(aiResponse);
+                await dbContext.SaveChangesAsync();
+
+                await Clients
+                    .Group(chatId.ToString())
+                    .ReceiveAIResponseAsync(
+                        new ReceiveAIResponseDto
+                        {
+                            Id = aiResponse.Id,
+                            Message = response,
+                            TimestampUtc = aiResponseReceivedTimeUtc,
+                        }
+                    );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("AI Task Error: " + ex); // Replace with real logger
+            }
+            finally
+            {
+                _llmProcessingManager.Release(chatId);
+            }
+        });
+        return true;
     }
 }
 
@@ -130,4 +184,13 @@ public interface IChatHubClient
 
     [HubMethodName("receive-ai-response")]
     Task ReceiveAIResponseAsync(ReceiveAIResponseDto request);
+
+    [HubMethodName("notify-ai-audio-response-ready")]
+    Task NotifyAiAudioResponseReadyAsync(NotifyAiAudioResponseReadyDto request);
+}
+
+public class NotifyAiAudioResponseReadyDto
+{
+    public long MessageId { get; set; }
+    public Guid ChatId { get; set; }
 }
