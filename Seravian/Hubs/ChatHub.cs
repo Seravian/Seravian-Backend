@@ -125,6 +125,7 @@ public class ChatHub : Hub<IChatHubClient>
                     Id = message.Id,
                     Message = request.Message,
                     TimestampUtc = receiveTimeUtc,
+                    MessageType = MessageType.Text,
                 }
             );
 
@@ -160,6 +161,7 @@ public class ChatHub : Hub<IChatHubClient>
                             Id = aiResponse.Id,
                             Message = response,
                             TimestampUtc = aiResponseReceivedTimeUtc,
+                            MessageType = MessageType.Text,
                         }
                     );
             }

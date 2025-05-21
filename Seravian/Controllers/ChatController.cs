@@ -404,6 +404,7 @@ public class ChatController : ControllerBase
                                     Id = userChatMessage.Id,
                                     Message = userChatMessage.Content,
                                     TimestampUtc = userChatMessage.TimestampUtc,
+                                    MessageType = MessageType.VoiceModeText,
                                 }
                             );
 
@@ -460,6 +461,7 @@ public class ChatController : ControllerBase
                                     Id = aiResponseChatMessage.Id,
                                     Message = aiResponseChatMessage.Content,
                                     TimestampUtc = aiResponseChatMessage.TimestampUtc,
+                                    MessageType = MessageType.VoiceModeText,
                                 }
                             );
                     }
