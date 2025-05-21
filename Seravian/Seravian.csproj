@@ -28,10 +28,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="ffmpeg\" />
     <Folder Include="Services\ChatHub\" />
     <Folder Include="Services\Chat\" />
     <Folder Include="Validation\Chat\" />
     <Folder Include="Validation\ChatHub\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ffmpeg\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ffmpeg\ffprobe.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

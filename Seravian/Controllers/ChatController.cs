@@ -3,7 +3,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Seravian.Hubs;
+using TestAIModels;
 
 [Route("[controller]")]
 [ApiController]
@@ -12,9 +16,39 @@ public class ChatController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
 
-    public ChatController(ApplicationDbContext dbContext)
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ChatProcessingManager _llmProcessingManager;
+    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly AIAudioAnalyzingService _voiceAnalysisService;
+    private readonly LLMService _llmService;
+    private readonly TTSService _ttsService;
+    private readonly IAudioService _audioService;
+    private readonly IOptionsMonitor<AudioPathsSettings> _audioPathsSettings;
+    private readonly ILogger<ChatController> _logger;
+
+    public ChatController(
+        ApplicationDbContext dbContext,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ChatProcessingManager llmProcessingManager,
+        IHubContext<ChatHub, IChatHubClient> hubContext,
+        AIAudioAnalyzingService voiceAnalysisService,
+        LLMService llmService,
+        TTSService ttsService,
+        IAudioService audioService,
+        IOptionsMonitor<AudioPathsSettings> audioPathsSettings,
+        ILogger<ChatController> logger
+    )
     {
         _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
+        _llmProcessingManager = llmProcessingManager;
+        _hubContext = hubContext;
+        _voiceAnalysisService = voiceAnalysisService;
+        _llmService = llmService;
+        _ttsService = ttsService;
+        _audioService = audioService;
+        _audioPathsSettings = audioPathsSettings;
+        _logger = logger;
     }
 
     [HttpPost("create")]
@@ -227,5 +261,232 @@ public class ChatController : ControllerBase
             .ToList();
 
         return Ok(messages);
+    }
+
+    [HttpGet("voice-mode-download-ai-voice")]
+    public async Task<IActionResult> DownloadAIAudio([FromQuery] DownloadAIAudioRequestDto request)
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+        var message = await _dbContext
+            .ChatsMessages.Include(m => m.Chat)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m =>
+                m.Id == request.AIAudioId
+                && !m.IsDeleted
+                && !m.Chat.IsDeleted
+                && m.Chat.PatientId == patientId
+                && m.IsAI
+            );
+
+        if (message is null)
+            return NotFound("AI audio not found or inaccessible.");
+
+        var filePath = Path.Combine(
+            _audioPathsSettings.CurrentValue.AIOutputFolder,
+            message.ChatId.ToString(),
+            $"{request.AIAudioId}.wav"
+        );
+
+        try
+        {
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("AI audio not found or inaccessible.");
+
+            var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return File(stream, "audio/wav", $"ai-response-{request.AIAudioId}.wav");
+        }
+        catch (Exception)
+        {
+            return NotFound("AI audio not found or inaccessible.");
+        }
+    }
+
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    [HttpPost("voice-mode-upload-user-voice")]
+    public async Task<IActionResult> UploadVoice(
+        [FromForm] IFormFile voiceFile,
+        [FromForm] Guid chatId
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+        if (
+            !await _dbContext.Chats.AnyAsync(c =>
+                c.Id == chatId && c.PatientId == patientId && !c.IsDeleted
+            )
+        )
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+
+        // Check if AI is busy processing for this chatId
+        if (voiceFile is null || voiceFile.Length == 0)
+            return BadRequest("Voice file is required.");
+
+        // Allowed MIME types list (expand as needed)
+        var allowedMimeTypes = new[]
+        {
+            "audio/wav",
+            "audio/x-wav",
+            "audio/webm",
+            "audio/mpeg",
+            "audio/mp3",
+            "audio/ogg",
+            "audio/flac",
+            "audio/x-matroska", // e.g., webm sometimes reports this
+            "video/webm", // some browsers send this for webm audio-only files
+        };
+
+        if (!allowedMimeTypes.Contains(voiceFile.ContentType))
+            return BadRequest("Unsupported audio format.");
+
+        if (!await _llmProcessingManager.TryLock(chatId))
+        {
+            // Lock not acquired = AI is still processing; reject new uploads
+            return Conflict("AI response is still being generated for this chat. Please wait.");
+        }
+
+        try
+        {
+            var uploadsFolder = Path.Combine(
+                _audioPathsSettings.CurrentValue.UserUploadFolder,
+                chatId.ToString()
+            );
+            Directory.CreateDirectory(uploadsFolder);
+
+            var tempPath = Path.Combine(
+                uploadsFolder,
+                $"{Guid.NewGuid()}{Path.GetExtension(voiceFile.FileName)}"
+            );
+            await using (var stream = new FileStream(tempPath, FileMode.Create))
+            {
+                await voiceFile.CopyToAsync(stream);
+            }
+
+            try
+            {
+                var wavPath = await _audioService.ValidateAndConvertToWavAsync(
+                    tempPath,
+                    uploadsFolder
+                );
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        AudioAnalyzingResult analysisResult =
+                            await _voiceAnalysisService.AnalyzeAudio(wavPath);
+
+                        System.IO.File.Delete(wavPath);
+
+                        var userChatMessage = new ChatMessage
+                        {
+                            ChatId = chatId,
+                            Content = analysisResult.Transcription,
+                            IsAI = false,
+                            TimestampUtc = DateTime.UtcNow,
+                        };
+
+                        using var dbContext = _dbContextFactory.CreateDbContext();
+
+                        await dbContext.ChatsMessages.AddAsync(userChatMessage);
+                        await dbContext.SaveChangesAsync();
+
+                        await _hubContext
+                            .Clients.Group(chatId.ToString())
+                            .ReceiveClientRequestAsync(
+                                new()
+                                {
+                                    Id = userChatMessage.Id,
+                                    Message = userChatMessage.Content,
+                                    TimestampUtc = userChatMessage.TimestampUtc,
+                                }
+                            );
+
+                        var formatLLMInput =
+                            $"I feel {analysisResult.DominantEmotion}. I said: {analysisResult.Transcription}";
+
+                        var llmResponse = await _llmService.SendMessageToLLMAsync(
+                            formatLLMInput,
+                            chatId.ToString()
+                        );
+
+                        var ttsAudioBase64 = await _ttsService.GenerateVoiceFromText(llmResponse);
+
+                        var outputFolder = Path.Combine(
+                            _audioPathsSettings.CurrentValue.AIOutputFolder,
+                            chatId.ToString()
+                        );
+
+                        var aiResponseChatMessage = new ChatMessage
+                        {
+                            ChatId = chatId,
+                            Content = llmResponse,
+                            IsAI = true,
+                            TimestampUtc = DateTime.UtcNow,
+                        };
+
+                        await dbContext.ChatsMessages.AddAsync(aiResponseChatMessage);
+                        await dbContext.SaveChangesAsync();
+
+                        Directory.CreateDirectory(outputFolder);
+
+                        var aiAudioResponseFilePath = Path.Combine(
+                            outputFolder,
+                            $"{aiResponseChatMessage.Id}.wav"
+                        );
+                        byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
+                        await System.IO.File.WriteAllBytesAsync(
+                            aiAudioResponseFilePath,
+                            audioBytes
+                        );
+
+                        await _hubContext
+                            .Clients.Group(chatId.ToString())
+                            .NotifyAiAudioResponseReadyAsync(
+                                new() { AIAudioId = aiResponseChatMessage.Id, ChatId = chatId }
+                            );
+
+                        await _hubContext
+                            .Clients.Group(chatId.ToString())
+                            .ReceiveAIResponseAsync(
+                                new()
+                                {
+                                    Id = aiResponseChatMessage.Id,
+                                    Message = aiResponseChatMessage.Content,
+                                    TimestampUtc = aiResponseChatMessage.TimestampUtc,
+                                }
+                            );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing voice file.");
+                    }
+                    finally
+                    {
+                        _llmProcessingManager.Release(chatId);
+                    }
+                });
+
+                return Ok(
+                    new { message = "Voice received and processing started.", path = wavPath }
+                );
+            }
+            catch (Exception ex)
+            {
+                // Optionally delete temp file on failure
+                if (System.IO.File.Exists(tempPath))
+                    System.IO.File.Delete(tempPath);
+
+                _llmProcessingManager.Release(chatId);
+                return BadRequest("Failed to process voice file.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _llmProcessingManager.Release(chatId);
+            return BadRequest(ex.Message);
+        }
     }
 }

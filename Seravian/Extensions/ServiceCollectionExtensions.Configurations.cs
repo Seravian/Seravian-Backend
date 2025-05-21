@@ -18,6 +18,10 @@ public static partial class ServiceCollectionExtensions
         services.Configure<SERAndSTTSettings>(configurations.GetSection("AI:SERAndSTT"));
         services.Configure<DeepFaceSettings>(configurations.GetSection("AI:DeepFace"));
         services.Configure<TTSSettings>(configurations.GetSection("AI:TTS"));
+        services.Configure<AudioPathsSettings>(configurations.GetSection("AudioPaths"));
+        services.Configure<AIAudioResponsesCleanupSettings>(
+            configurations.GetSection("AIAudioResponsesCleanup")
+        );
         return services;
     }
 }

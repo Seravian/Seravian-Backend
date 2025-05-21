@@ -1,115 +1,85 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
-namespace TestAIModels;
-
-public class AudioService
+public interface IAudioService
 {
-    private readonly string _apiUrl;
-    private readonly string _apiKey;
-    private readonly string _apiKeyHeader;
+    Task<string> ValidateAndConvertToWavAsync(string inputPath, string outputFolder);
+}
 
-    public AudioService(IOptionsMonitor<SERAndSTTSettings> llmOptions)
+public class AudioService : IAudioService
+{
+    private readonly string _ffmpegPath;
+
+    public AudioService(IWebHostEnvironment env)
     {
-        _apiKeyHeader = llmOptions.CurrentValue.ApiKeyHeader;
-        _apiUrl = llmOptions.CurrentValue.ApiUrl;
-        _apiKey = llmOptions.CurrentValue.ApiKey;
+        _ffmpegPath = Path.Combine(env.ContentRootPath, "ffmpeg", "ffmpeg.exe");
     }
 
-    public async Task<AudioAnalyzingResult> AnalyzeAudio(string filePath)
+    public async Task<string> ValidateAndConvertToWavAsync(string inputPath, string outputFolder)
     {
-        // Generate or specify a GUID to send with the request
+        if (!File.Exists(inputPath))
+            throw new FileNotFoundException("Input file not found.");
 
-        if (!File.Exists(filePath))
+        // Step 1: Validate audio using FFmpeg - decode check
+        var validateArgs = $"-v error -i \"{inputPath}\" -f null -";
+        var validateResult = await RunFFmpegAsync(validateArgs);
+
+        if (validateResult.ExitCode != 0)
+            throw new InvalidOperationException("Invalid or unsupported audio file.");
+
+        var extension = Path.GetExtension(inputPath).ToLowerInvariant();
+        var outputWavPath = Path.Combine(outputFolder, $"{Guid.NewGuid()}.wav");
+
+        // Step 2: If already WAV, optionally re-encode to standard spec, or just return
+        if (extension == ".wav")
         {
-            throw new FileNotFoundException("File not found", filePath);
+            // Optional: Re-encode to target format (16kHz mono) for consistency
+            // Comment out below if you want to skip re-encoding WAV files
+
+            var reencodeArgs = $"-y -i \"{inputPath}\" -ar 16000 -ac 1 -f wav \"{outputWavPath}\"";
+            var reencodeResult = await RunFFmpegAsync(reencodeArgs);
+
+            if (reencodeResult.ExitCode != 0)
+                throw new Exception($"Re-encoding WAV failed: {reencodeResult.Error}");
+
+            // Delete original wav file after re-encoding
+            File.Delete(inputPath);
+
+            return outputWavPath;
         }
 
-        Guid requestGuid = Guid.NewGuid(); // Or specify a GUID manually like Guid.Parse("your-guid-here")
+        // Step 3: Convert non-WAV files to WAV
+        var convertArgs = $"-y -i \"{inputPath}\" -ar 16000 -ac 1 -f wav \"{outputWavPath}\"";
+        var convertResult = await RunFFmpegAsync(convertArgs);
 
-        var httpClient = new HttpClient();
-        httpClient.Timeout = TimeSpan.FromMinutes(10);
-        using var form = new MultipartFormDataContent();
-        using var fileStream = File.OpenRead(filePath);
-        using var fileContent = new StreamContent(fileStream);
+        if (convertResult.ExitCode != 0)
+            throw new Exception($"Audio conversion failed: {convertResult.Error}");
 
-        httpClient.DefaultRequestHeaders.Add(_apiKeyHeader, _apiKey);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav"); // Change based on file type
-        form.Add(fileContent, "file", Path.GetFileName(filePath));
+        // Delete original non-wav file after conversion
+        File.Delete(inputPath);
 
-        // Add the GUID to the form data
-        form.Add(new StringContent(requestGuid.ToString()), "id"); // Adding the GUID field
+        return outputWavPath;
+    }
 
-        var before = DateTime.Now;
-
-        //AudioModelsResponse
-        var response = await httpClient.PostAsync(_apiUrl, form);
-
-        var after = DateTime.Now;
-
-        Console.WriteLine($"Time taken: {(after - before).TotalMilliseconds} ms");
-        Console.WriteLine($"Response Status Code: {response.StatusCode}");
-
-        if (!response.IsSuccessStatusCode)
+    private async Task<(int ExitCode, string Output, string Error)> RunFFmpegAsync(string args)
+    {
+        var process = new Process
         {
-            throw new Exception($"Error: {response.StatusCode} - {response.ReasonPhrase}");
-        }
-
-        var jsonResponse = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<AudioAnalyzingResult>(
-            jsonResponse,
-            new JsonSerializerOptions
+            StartInfo = new ProcessStartInfo
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-            }
-        );
+                FileName = _ffmpegPath,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            },
+        };
 
-        if (result == null)
-        {
-            throw new Exception("Failed to deserialize response.");
-        }
+        process.Start();
+        string output = await process.StandardOutput.ReadToEndAsync();
+        string error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
 
-        Console.WriteLine("Transcription: " + result.Transcription);
-        Console.WriteLine("Dominant Emotion: " + result.DominantEmotion);
-        Console.WriteLine("Emotions");
-
-        foreach (var emotion in result.Emotions)
-        {
-            Console.WriteLine($"- {emotion.Emotion}: {emotion.Score}");
-        }
-
-        return result;
+        return (process.ExitCode, output, error);
     }
-}
-
-public class AudioAnalyzingResult
-{
-    public SEREmotion DominantEmotion { get; set; }
-
-    public List<SEREmotionScore> Emotions { get; set; }
-
-    public string Transcription { get; set; }
-}
-
-public class SEREmotionScore
-{
-    public SEREmotion Emotion { get; set; }
-
-    public float Score { get; set; }
-}
-
-public enum SEREmotion
-{
-    Unknown = -1,
-    Angry,
-    Happy,
-    Fearful,
-    Neutral,
-    Surprised,
-    Disgusted,
-    Calm,
-    Sad,
 }

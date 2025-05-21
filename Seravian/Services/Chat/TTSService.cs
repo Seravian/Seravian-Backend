@@ -25,7 +25,7 @@ public class TTSService
         {
             Text = text,
             Voice = "tom",
-            Preset = "fast",
+            Preset = "ultra_fast",
             NumAutoregressiveSamples = 50,
             Seed = null,
             Temperature = 0.8f,
@@ -38,7 +38,7 @@ public class TTSService
         try
         {
             using HttpClient client = new HttpClient();
-            client.Timeout = TimeSpan.FromMinutes(10);
+            client.Timeout = TimeSpan.FromMinutes(20);
             // Set API key header
             client.DefaultRequestHeaders.Add(_apiKeyHeader, _apiKey);
 
@@ -74,13 +74,8 @@ public class TTSService
 
             // Optionally save audio to file (WAV)
 
-            byte[] audioBytes = Convert.FromBase64String(ttsResponse.AudioBase64);
-            var outputPath = "E:/output.wav";
-            await File.WriteAllBytesAsync(outputPath, audioBytes);
 
-            Console.WriteLine("Audio saved as output.wav");
-
-            return outputPath;
+            return ttsResponse.AudioBase64;
         }
         catch (Exception ex)
         {

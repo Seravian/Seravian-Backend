@@ -6,7 +6,7 @@ public static partial class ServiceCollectionExtensions
     {
         services.AddSingleton<ChatProcessingManager>();
         services.AddSingleton<LLMService>();
-        services.AddSingleton<AudioService>();
+        services.AddSingleton<AIAudioAnalyzingService>();
         services.AddSingleton<DeepFaceService>();
         services.AddSingleton<TTSService>();
 
@@ -20,6 +20,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAudioService, AudioService>();
 
         return services;
     }

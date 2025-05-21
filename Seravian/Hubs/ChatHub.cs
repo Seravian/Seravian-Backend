@@ -191,6 +191,6 @@ public interface IChatHubClient
 
 public class NotifyAiAudioResponseReadyDto
 {
-    public long MessageId { get; set; }
+    public long AIAudioId { get; set; }
     public Guid ChatId { get; set; }
 }

@@ -17,6 +17,8 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddHostedService<AIAudioResponsesCleanupService>();
 builder.Services.AddHostedService<CleanDbBackgroundService>();
 
 builder.Services.AddCustomCors(builder.Configuration);
@@ -47,6 +49,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCustomCors();
 app.UseHttpsRedirection();
+
 app.UseAuthorization();
 
 app.MapSignalRHubs();
