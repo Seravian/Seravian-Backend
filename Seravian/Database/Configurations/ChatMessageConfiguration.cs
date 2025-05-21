@@ -7,6 +7,7 @@ class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
     {
         // Table name (optional, if you want to explicitly set it)
         builder.ToTable("ChatsMessages");
+        builder.Property(cm => cm.MessageType).HasConversion<int>().IsRequired();
 
         // Primary Key
         builder.HasKey(cm => cm.Id);

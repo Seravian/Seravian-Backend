@@ -79,6 +79,9 @@ namespace Seravian.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<int>("MessageType")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("datetime2");
 

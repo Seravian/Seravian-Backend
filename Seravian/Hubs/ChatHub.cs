@@ -100,6 +100,7 @@ public class ChatHub : Hub<IChatHubClient>
             TimestampUtc = receiveTimeUtc,
             ChatId = chatId,
             Content = request.Message,
+            MessageType = MessageType.Text,
         };
 
         await _applicationDbContext.ChatsMessages.AddAsync(message);
@@ -143,6 +144,7 @@ public class ChatHub : Hub<IChatHubClient>
                     ChatId = chatId,
                     Content = response,
                     IsAI = true,
+                    MessageType = MessageType.Text,
                 };
 
                 using var dbContext = _dbContextFactory.CreateDbContext();

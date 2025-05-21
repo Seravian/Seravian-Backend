@@ -215,6 +215,7 @@ public class ChatController : ControllerBase
                     Id = m.Id,
                     Content = m.Content,
                     TimestampUtc = m.TimestampUtc,
+                    MessageType = m.MessageType,
                     IsAI = m.IsAI,
                 })
                 .ToList(),
@@ -257,6 +258,7 @@ public class ChatController : ControllerBase
                 Content = m.Content,
                 TimestampUtc = m.TimestampUtc,
                 IsAI = m.IsAI,
+                MessageType = m.MessageType,
             })
             .ToList();
 
@@ -386,6 +388,7 @@ public class ChatController : ControllerBase
                             Content = analysisResult.Transcription,
                             IsAI = false,
                             TimestampUtc = DateTime.UtcNow,
+                            MessageType = MessageType.VoiceModeText,
                         };
 
                         using var dbContext = _dbContextFactory.CreateDbContext();
@@ -425,6 +428,7 @@ public class ChatController : ControllerBase
                             Content = llmResponse,
                             IsAI = true,
                             TimestampUtc = DateTime.UtcNow,
+                            MessageType = MessageType.VoiceModeText,
                         };
 
                         await dbContext.ChatsMessages.AddAsync(aiResponseChatMessage);
