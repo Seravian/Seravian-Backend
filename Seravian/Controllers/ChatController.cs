@@ -410,11 +410,13 @@ public class ChatController : ControllerBase
                                     Message = userChatMessage.Content,
                                     TimestampUtc = userChatMessage.TimestampUtc,
                                     MessageType = MessageType.VoiceModeText,
+                                    ChatId = chatId,
                                 }
                             );
 
                         var formatLLMInput =
-                            $"I feel {analysisResult.DominantEmotion}. I said: {analysisResult.Transcription}";
+                            $"Respond accordingly: {analysisResult.Transcription}."
+                            + $" Take note that the i'm feeling {analysisResult.DominantEmotion}.";
 
                         var llmResponse = await _llmService.SendMessageToLLMAsync(
                             formatLLMInput,
@@ -467,6 +469,7 @@ public class ChatController : ControllerBase
                                     Message = aiResponseChatMessage.Content,
                                     TimestampUtc = aiResponseChatMessage.TimestampUtc,
                                     MessageType = MessageType.VoiceModeText,
+                                    ChatId = chatId,
                                 }
                             );
                     }
