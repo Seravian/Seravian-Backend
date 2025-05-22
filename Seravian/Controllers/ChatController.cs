@@ -389,6 +389,11 @@ public class ChatController : ControllerBase
                             IsAI = false,
                             TimestampUtc = DateTime.UtcNow,
                             MessageType = MessageType.VoiceModeText,
+                            VoiceAnalysis = new ChatVoiceAnalysis()
+                            {
+                                Transcription = analysisResult.Transcription,
+                                SEREmotionAnalysis = analysisResult.DominantEmotion.ToString(),
+                            },
                         };
 
                         using var dbContext = _dbContextFactory.CreateDbContext();
