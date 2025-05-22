@@ -1,6 +1,7 @@
 public class ConfirmClientRequestDto
 {
-    public DateTime TimestampUtc { get; set; }
+    public Guid ChatId { get; set; }
+    public Guid ClientMessageId { get; set; }
     public long MessageId { get; set; }
-    public Guid ClientMessageId { get; internal set; }
+    public DateTime TimestampUtc { get; set; }
 }
