@@ -246,11 +246,15 @@ public class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
         }
+        Func<ChatMessage, bool> filter;
+
+        if (request.LastMessageId is null)
+            filter = m => !m.IsDeleted;
+        else
+            filter = m => m.Id > request.LastMessageId && !m.IsDeleted;
 
         var messages = chat
-            .ChatMessages.Where(m =>
-                m.TimestampUtc > request.LastMessageTimestampUtc && !m.IsDeleted
-            )
+            .ChatMessages.Where(filter)
             .OrderBy(m => m.TimestampUtc)
             .Select(m => new ChatMessageDto
             {
@@ -451,7 +455,13 @@ public class ChatController : ControllerBase
                         byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
                         await System.IO.File.WriteAllBytesAsync(
                             aiAudioResponseFilePath,
+<<<<<<< Updated upstream
                             audioBytes
+=======
+                            440,
+                            10,
+                            44000
+>>>>>>> Stashed changes
                         );
 
                         await _hubContext
