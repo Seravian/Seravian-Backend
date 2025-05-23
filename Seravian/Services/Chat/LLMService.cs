@@ -17,12 +17,17 @@ public class LLMService
         _apiKey = llmOptions.CurrentValue.ApiKey;
     }
 
-    public async Task<string?> SendMessageToLLMAsync(string message, string chatId)
+    public async Task<string?> SendMessageToLLMAsync(string message, long messageId, string chatId)
     {
         var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromMinutes(20);
         httpClient.DefaultRequestHeaders.Add(_apiKeyHeader, _apiKey);
-        var payload = new LLMRequestDto { Message = message, ChatId = chatId };
+        var payload = new LLMRequestDto
+        {
+            Message = message,
+            ChatId = chatId,
+            MessageId = messageId,
+        };
 
         try
         {
@@ -63,4 +68,5 @@ public class LLMRequestDto
 {
     public string Message { get; set; } = string.Empty;
     public string ChatId { get; set; } = string.Empty;
+    public long MessageId { get; set; }
 }

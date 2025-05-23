@@ -137,6 +137,7 @@ public class ChatHub : Hub<IChatHubClient>
             {
                 var response = await _llmService.SendMessageToLLMAsync(
                     request.Message,
+                    message.Id,
                     chatId.ToString()
                 );
                 var aiResponseReceivedTimeUtc = DateTime.UtcNow;

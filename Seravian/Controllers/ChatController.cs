@@ -424,6 +424,7 @@ public class ChatController : ControllerBase
 
                         var llmResponse = await _llmService.SendMessageToLLMAsync(
                             formatLLMInput,
+                            userChatMessage.Id,
                             chatId.ToString()
                         );
 
