@@ -24,6 +24,7 @@ public class ChatController : ControllerBase
     private readonly TTSService _ttsService;
     private readonly IAudioService _audioService;
     private readonly IOptionsMonitor<AudioPathsSettings> _audioPathsSettings;
+    private readonly IWAVService _wavService;
     private readonly ILogger<ChatController> _logger;
 
     public ChatController(
@@ -36,7 +37,8 @@ public class ChatController : ControllerBase
         TTSService ttsService,
         IAudioService audioService,
         IOptionsMonitor<AudioPathsSettings> audioPathsSettings,
-        ILogger<ChatController> logger
+        ILogger<ChatController> logger,
+        IWAVService wAVService
     )
     {
         _dbContext = dbContext;
@@ -49,6 +51,7 @@ public class ChatController : ControllerBase
         _audioService = audioService;
         _audioPathsSettings = audioPathsSettings;
         _logger = logger;
+        _wavService = wAVService;
     }
 
     [HttpPost("create")]
@@ -246,11 +249,15 @@ public class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
         }
+        Func<ChatMessage, bool> filter;
+
+        if (request.LastMessageId is null)
+            filter = m => !m.IsDeleted;
+        else
+            filter = m => m.Id > request.LastMessageId && !m.IsDeleted;
 
         var messages = chat
-            .ChatMessages.Where(m =>
-                m.TimestampUtc > request.LastMessageTimestampUtc && !m.IsDeleted
-            )
+            .ChatMessages.Where(filter)
             .OrderBy(m => m.TimestampUtc)
             .Select(m => new ChatMessageDto
             {
@@ -377,8 +384,14 @@ public class ChatController : ControllerBase
                 {
                     try
                     {
-                        AudioAnalyzingResult analysisResult =
-                            await _voiceAnalysisService.AnalyzeAudio(wavPath);
+                        // AudioAnalyzingResult analysisResult =
+                        //     await _voiceAnalysisService.AnalyzeAudio(wavPath);
+                        AudioAnalyzingResult analysisResult = new()
+                        {
+                            DominantEmotion = SEREmotion.Neutral,
+                            Transcription = "HI how are you",
+                        };
+                        await Task.Delay(10000);
 
                         System.IO.File.Delete(wavPath);
 
@@ -418,12 +431,14 @@ public class ChatController : ControllerBase
                             $"Respond accordingly: {analysisResult.Transcription}."
                             + $" Take note that the i'm feeling {analysisResult.DominantEmotion}.";
 
-                        var llmResponse = await _llmService.SendMessageToLLMAsync(
-                            formatLLMInput,
-                            chatId.ToString()
-                        );
+                        // var llmResponse = await _llmService.SendMessageToLLMAsync(
+                        //     formatLLMInput,
+                        //     chatId.ToString()
+                        // );
+                        await Task.Delay(10000);
+                        var llmResponse = "hi how can i help today?";
 
-                        var ttsAudioBase64 = await _ttsService.GenerateVoiceFromText(llmResponse);
+                        // var ttsAudioBase64 = await _ttsService.GenerateVoiceFromText(llmResponse);
 
                         var outputFolder = Path.Combine(
                             _audioPathsSettings.CurrentValue.AIOutputFolder,
@@ -448,11 +463,20 @@ public class ChatController : ControllerBase
                             outputFolder,
                             $"{aiResponseChatMessage.Id}.wav"
                         );
-                        byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
-                        await System.IO.File.WriteAllBytesAsync(
+
+                        await Task.Delay(10000);
+
+                        _wavService.GenerateAndSaveSineWaveWav(
                             aiAudioResponseFilePath,
-                            audioBytes
+                            440,
+                            10,
+                            44100
                         );
+                        // byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
+                        // await System.IO.File.WriteAllBytesAsync(
+                        //     aiAudioResponseFilePath,
+                        //     audioBytes
+                        // );
 
                         await _hubContext
                             .Clients.Group(chatId.ToString())

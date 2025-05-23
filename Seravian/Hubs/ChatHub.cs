@@ -135,10 +135,12 @@ public class ChatHub : Hub<IChatHubClient>
         {
             try
             {
-                var response = await _llmService.SendMessageToLLMAsync(
-                    request.Message,
-                    chatId.ToString()
-                );
+                // var response = await _llmService.SendMessageToLLMAsync(
+                //     request.Message,
+                //     chatId.ToString()
+                // );
+                var response = "ho how can i help you?";
+                await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(3, 8)));
                 var aiResponseReceivedTimeUtc = DateTime.UtcNow;
 
                 var aiResponse = new ChatMessage
