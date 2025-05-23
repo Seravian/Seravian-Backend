@@ -455,13 +455,7 @@ public class ChatController : ControllerBase
                         byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
                         await System.IO.File.WriteAllBytesAsync(
                             aiAudioResponseFilePath,
-<<<<<<< Updated upstream
                             audioBytes
-=======
-                            440,
-                            10,
-                            44000
->>>>>>> Stashed changes
                         );
 
                         await _hubContext
