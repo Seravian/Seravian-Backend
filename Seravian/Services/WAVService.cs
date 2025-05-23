@@ -9,7 +9,7 @@ public class WAVService : IWAVService
         string filePath,
         double frequency = 440.0,
         int durationSeconds = 2,
-        int sampleRate = 44100
+        int sampleRate = 24000
     )
     {
         int numChannels = 1;
@@ -60,6 +60,6 @@ public interface IWAVService
         string filePath,
         double frequency = 440.0,
         int durationSeconds = 2,
-        int sampleRate = 44100
+        int sampleRate = 24000
     );
 }

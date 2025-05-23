@@ -470,7 +470,7 @@ public class ChatController : ControllerBase
                             aiAudioResponseFilePath,
                             440,
                             10,
-                            44100
+                            24000
                         );
                         // byte[] audioBytes = Convert.FromBase64String(ttsAudioBase64);
                         // await System.IO.File.WriteAllBytesAsync(
