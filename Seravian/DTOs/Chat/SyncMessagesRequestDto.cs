@@ -1,5 +1,5 @@
 public class SyncMessagesRequestDto
 {
-    public DateTime LastMessageTimestampUtc { get; set; }
+    public long? LastMessageId { get; set; }
     public Guid ChatId { get; set; }
 }
