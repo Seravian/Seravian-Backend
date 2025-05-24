@@ -386,6 +386,10 @@ public class ChatController : ControllerBase
 
                         System.IO.File.Delete(wavPath);
 
+                        var formatLLMInput =
+                            $"Respond accordingly: {analysisResult.Transcription}."
+                            + $" Take note that the i'm feeling {analysisResult.DominantEmotion}.";
+
                         var userChatMessage = new ChatMessage
                         {
                             ChatId = chatId,
@@ -397,6 +401,7 @@ public class ChatController : ControllerBase
                             {
                                 Transcription = analysisResult.Transcription,
                                 SEREmotionAnalysis = analysisResult.DominantEmotion.ToString(),
+                                CombinedAnalysisResult = formatLLMInput,
                             },
                         };
 
@@ -417,10 +422,6 @@ public class ChatController : ControllerBase
                                     ChatId = chatId,
                                 }
                             );
-
-                        var formatLLMInput =
-                            $"Respond accordingly: {analysisResult.Transcription}."
-                            + $" Take note that the i'm feeling {analysisResult.DominantEmotion}.";
 
                         var llmResponse = await _llmService.SendMessageToLLMAsync(
                             formatLLMInput,
