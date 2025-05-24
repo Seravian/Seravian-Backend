@@ -401,7 +401,7 @@ public class ChatController : ControllerBase
                             {
                                 Transcription = analysisResult.Transcription,
                                 SEREmotionAnalysis = analysisResult.DominantEmotion.ToString(),
-                                CombinedAnalysisResult = formatLLMInput,
+                                LLMFormattedInputFromCombinedAnalysisResult = formatLLMInput,
                             },
                         };
 
