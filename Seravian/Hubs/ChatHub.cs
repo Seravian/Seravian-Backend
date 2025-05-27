@@ -10,6 +10,8 @@ namespace Seravian.Hubs;
 [Authorize(Roles = "Patient")]
 public class ChatHub : Hub<IChatHubClient>
 {
+    private readonly IAIResponseTrackerService _aiResponseTracker;
+
     private static readonly ConcurrentDictionary<string, Guid> _connectionUserMap = new();
     private readonly ChatProcessingManager _llmProcessingManager;
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
@@ -21,12 +23,14 @@ public class ChatHub : Hub<IChatHubClient>
     public ChatHub(
         ChatProcessingManager llmProcessingManager,
         LLMService llmService,
+        IAIResponseTrackerService aiResponseTracker,
         ApplicationDbContext applicationDbContext,
         IDbContextFactory<ApplicationDbContext> dbContextFactory
     )
     {
         _llmProcessingManager = llmProcessingManager;
         _llmService = llmService;
+        _aiResponseTracker = aiResponseTracker;
         _applicationDbContext = applicationDbContext;
         _dbContextFactory = dbContextFactory;
     }
@@ -95,6 +99,7 @@ public class ChatHub : Hub<IChatHubClient>
             return false;
         }
 
+        _aiResponseTracker.TryStartResponse(chatId);
         var message = new ChatMessage
         {
             TimestampUtc = receiveTimeUtc,
@@ -176,6 +181,7 @@ public class ChatHub : Hub<IChatHubClient>
             finally
             {
                 _llmProcessingManager.Release(chatId);
+                _aiResponseTracker.MarkResponseComplete(chatId);
             }
         });
         return true;

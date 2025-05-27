@@ -9,6 +9,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<AIAudioAnalyzingService>();
         services.AddSingleton<DeepFaceService>();
         services.AddSingleton<TTSService>();
+        services.AddSingleton<IAIResponseTrackerService, AIResponseTrackerService>();
 
         return services;
     }

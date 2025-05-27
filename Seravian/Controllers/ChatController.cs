@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -12,7 +13,7 @@ using TestAIModels;
 [Route("[controller]")]
 [ApiController]
 [Authorize(Roles = "Patient")]
-public class ChatController : ControllerBase
+public partial class ChatController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
 
@@ -25,6 +26,7 @@ public class ChatController : ControllerBase
     private readonly IAudioService _audioService;
     private readonly IOptionsMonitor<AudioPathsSettings> _audioPathsSettings;
     private readonly ILogger<ChatController> _logger;
+    private readonly IAIResponseTrackerService _aiResponseTracker;
 
     public ChatController(
         ApplicationDbContext dbContext,
@@ -36,6 +38,7 @@ public class ChatController : ControllerBase
         TTSService ttsService,
         IAudioService audioService,
         IOptionsMonitor<AudioPathsSettings> audioPathsSettings,
+        IAIResponseTrackerService aiResponseTracker,
         ILogger<ChatController> logger
     )
     {
@@ -48,6 +51,7 @@ public class ChatController : ControllerBase
         _ttsService = ttsService;
         _audioService = audioService;
         _audioPathsSettings = audioPathsSettings;
+        _aiResponseTracker = aiResponseTracker;
         _logger = logger;
     }
 
@@ -269,6 +273,28 @@ public class ChatController : ControllerBase
         return Ok(messages);
     }
 
+    [HttpGet("is-processing")]
+    public async Task<ActionResult<IsProcessingResponseDto>> IsProcessing(
+        [FromQuery] IsProcessingRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var chatId = request.ChatId;
+
+        if (
+            !await _dbContext.Chats.AnyAsync(c =>
+                c.Id == chatId && c.PatientId == patientId && !c.IsDeleted
+            )
+        )
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+
+        var isProcessing = _aiResponseTracker.IsResponding(chatId);
+
+        return Ok(new IsProcessingResponseDto { IsProcessing = isProcessing });
+    }
+
     [HttpGet("voice-mode-download-ai-voice")]
     public async Task<IActionResult> DownloadAIAudio([FromQuery] DownloadAIAudioRequestDto request)
     {
@@ -353,6 +379,7 @@ public class ChatController : ControllerBase
             return Conflict("AI response is still being generated for this chat. Please wait.");
         }
 
+        _aiResponseTracker.TryStartResponse(chatId);
         try
         {
             var uploadsFolder = Path.Combine(
@@ -387,9 +414,7 @@ public class ChatController : ControllerBase
                         System.IO.File.Delete(wavPath);
 
                         var formatLLMInput =
-                            $"Respond accordingly: {analysisResult.Transcription}."
-                            + $" Take note that the i'm feeling {analysisResult.DominantEmotion}.";
-
+                            $"Emotion: {analysisResult.DominantEmotion}. Message: {analysisResult.Transcription}";
                         var userChatMessage = new ChatMessage
                         {
                             ChatId = chatId,
@@ -486,6 +511,7 @@ public class ChatController : ControllerBase
                     finally
                     {
                         _llmProcessingManager.Release(chatId);
+                        _aiResponseTracker.MarkResponseComplete(chatId);
                     }
                 });
 
@@ -500,12 +526,15 @@ public class ChatController : ControllerBase
                     System.IO.File.Delete(tempPath);
 
                 _llmProcessingManager.Release(chatId);
+                _aiResponseTracker.MarkResponseComplete(chatId);
+
                 return BadRequest("Failed to process voice file.");
             }
         }
         catch (Exception ex)
         {
             _llmProcessingManager.Release(chatId);
+            _aiResponseTracker.MarkResponseComplete(chatId);
             return BadRequest(ex.Message);
         }
     }

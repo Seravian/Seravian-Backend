@@ -11,6 +11,8 @@ public class ChatVoiceAnalysisConfiguration : IEntityTypeConfiguration<ChatVoice
 
         builder.Property(v => v.SEREmotionAnalysis).HasMaxLength(2000); // Adjust as needed
 
+        builder.Property(v => v.LLMFormattedInputFromCombinedAnalysisResult).HasMaxLength(5000); // Adjust as needed
+
         builder
             .HasOne(v => v.Message)
             .WithOne(m => m.VoiceAnalysis) // Ensure ChatMessage has a VoiceAnalysis nav prop
