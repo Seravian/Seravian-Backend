@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Seravian.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250609034649_AddDoctorIdentityVerificaitonV1")]
+    partial class AddDoctorIdentityVerificaitonV1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -197,11 +200,6 @@ namespace Seravian.Migrations
                     b.Property<Guid>("DoctorId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("RejectionNotes")
-                        .HasMaxLength(2000)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(2000)");
-
                     b.Property<DateTime>("RequestedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -227,51 +225,11 @@ namespace Seravian.Migrations
 
                     b.HasIndex("DoctorId")
                         .IsUnique()
-                        .HasFilter("[Status] IN (0, 1)");
+                        .HasFilter("[Status] = 0");
 
                     b.HasIndex("ReviewerId");
 
-                    b.ToTable("DoctorsVerificationRequests");
-                });
-
-            modelBuilder.Entity("DoctorVerificationRequestAttachment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("DoctorVerificationRequestId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("UploadedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DoctorVerificationRequestId");
-
-                    b.ToTable("DoctorsVerificationRequestsAttachments");
+                    b.ToTable("VerificationRequests");
                 });
 
             modelBuilder.Entity("EmailVerificationOtp", b =>
@@ -392,6 +350,47 @@ namespace Seravian.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("VerificationAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DoctorVerificationRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorVerificationRequestId");
+
+                    b.ToTable("VerificationRequestsAttachments");
+                });
+
             modelBuilder.Entity("Admin", b =>
                 {
                     b.HasOne("User", "User")
@@ -475,17 +474,6 @@ namespace Seravian.Migrations
                     b.Navigation("Reviewer");
                 });
 
-            modelBuilder.Entity("DoctorVerificationRequestAttachment", b =>
-                {
-                    b.HasOne("DoctorVerificationRequest", "DoctorVerificationRequest")
-                        .WithMany("Attachments")
-                        .HasForeignKey("DoctorVerificationRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DoctorVerificationRequest");
-                });
-
             modelBuilder.Entity("EmailVerificationOtp", b =>
                 {
                     b.HasOne("User", "User")
@@ -517,6 +505,17 @@ namespace Seravian.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("VerificationAttachment", b =>
+                {
+                    b.HasOne("DoctorVerificationRequest", "DoctorVerificationRequest")
+                        .WithMany("Attachments")
+                        .HasForeignKey("DoctorVerificationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DoctorVerificationRequest");
                 });
 
             modelBuilder.Entity("Chat", b =>

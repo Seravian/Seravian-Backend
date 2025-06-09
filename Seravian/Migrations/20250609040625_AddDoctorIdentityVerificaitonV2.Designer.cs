@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Seravian.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250609040625_AddDoctorIdentityVerificaitonV2")]
+    partial class AddDoctorIdentityVerificaitonV2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -197,11 +200,6 @@ namespace Seravian.Migrations
                     b.Property<Guid>("DoctorId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("RejectionNotes")
-                        .HasMaxLength(2000)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(2000)");
-
                     b.Property<DateTime>("RequestedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -227,11 +225,11 @@ namespace Seravian.Migrations
 
                     b.HasIndex("DoctorId")
                         .IsUnique()
-                        .HasFilter("[Status] IN (0, 1)");
+                        .HasFilter("[Status] = 0");
 
                     b.HasIndex("ReviewerId");
 
-                    b.ToTable("DoctorsVerificationRequests");
+                    b.ToTable("VerificationRequests");
                 });
 
             modelBuilder.Entity("DoctorVerificationRequestAttachment", b =>
@@ -246,6 +244,7 @@ namespace Seravian.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -271,7 +270,7 @@ namespace Seravian.Migrations
 
                     b.HasIndex("DoctorVerificationRequestId");
 
-                    b.ToTable("DoctorsVerificationRequestsAttachments");
+                    b.ToTable("VerificationRequestsAttachments");
                 });
 
             modelBuilder.Entity("EmailVerificationOtp", b =>
