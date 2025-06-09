@@ -132,6 +132,7 @@ public class TokenService : ITokenService
             expires: DateTime.UtcNow.AddMinutes(_jwtSettings.Value.AccessTokenExpirationMinutes),
             signingCredentials: credentials
         );
+
         // Return the token as a string
         return new AuthTokens
         {

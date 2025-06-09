@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Seravian.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250424232956_v3")]
-    partial class v3
+    [Migration("20250524002452_AddChatMediaAndVoiceChatModeV3")]
+    partial class AddChatMediaAndVoiceChatModeV3
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,6 +32,130 @@ namespace Seravian.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("Admins");
+                });
+
+            modelBuilder.Entity("Chat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("Chats", (string)null);
+                });
+
+            modelBuilder.Entity("ChatMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsAI")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MessageType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId");
+
+                    b.ToTable("ChatsMessages", (string)null);
+                });
+
+            modelBuilder.Entity("ChatMessageMedia", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CombinedAnalysisResult")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FaceAnalysis")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("FileSizeInBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("MediaType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SEREmotionAnalysis")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Transcription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MessageId");
+
+                    b.ToTable("ChatsMessagesMedias");
+                });
+
+            modelBuilder.Entity("ChatVoiceAnalysis", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("LLMFormattedInputFromCombinedAnalysisResult")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SEREmotionAnalysis")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Transcription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("MessageId");
+
+                    b.ToTable("ChatVoiceAnalyses");
                 });
 
             modelBuilder.Entity("Doctor", b =>
@@ -179,6 +303,50 @@ namespace Seravian.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Chat", b =>
+                {
+                    b.HasOne("Patient", "Patient")
+                        .WithMany("Chats")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("ChatMessage", b =>
+                {
+                    b.HasOne("Chat", "Chat")
+                        .WithMany("ChatMessages")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chat");
+                });
+
+            modelBuilder.Entity("ChatMessageMedia", b =>
+                {
+                    b.HasOne("ChatMessage", "Message")
+                        .WithOne("Media")
+                        .HasForeignKey("ChatMessageMedia", "MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("ChatVoiceAnalysis", b =>
+                {
+                    b.HasOne("ChatMessage", "Message")
+                        .WithOne("VoiceAnalysis")
+                        .HasForeignKey("ChatVoiceAnalysis", "MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
             modelBuilder.Entity("Doctor", b =>
                 {
                     b.HasOne("User", "User")
@@ -221,6 +389,23 @@ namespace Seravian.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Chat", b =>
+                {
+                    b.Navigation("ChatMessages");
+                });
+
+            modelBuilder.Entity("ChatMessage", b =>
+                {
+                    b.Navigation("Media");
+
+                    b.Navigation("VoiceAnalysis");
+                });
+
+            modelBuilder.Entity("Patient", b =>
+                {
+                    b.Navigation("Chats");
                 });
 
             modelBuilder.Entity("User", b =>

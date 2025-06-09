@@ -5,24 +5,24 @@
 namespace Seravian.Migrations
 {
     /// <inheritdoc />
-    public partial class v3 : Migration
+    public partial class AddChatMediaAndVoiceChatModeV3 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.RenameColumn(
-                name: "EmailVerificationDate",
-                table: "Users",
-                newName: "EmailVerifiedAtUtc");
+                name: "CombinedAnalysisResult",
+                table: "ChatVoiceAnalyses",
+                newName: "LLMFormattedInputFromCombinedAnalysisResult");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.RenameColumn(
-                name: "EmailVerifiedAtUtc",
-                table: "Users",
-                newName: "EmailVerificationDate");
+                name: "LLMFormattedInputFromCombinedAnalysisResult",
+                table: "ChatVoiceAnalyses",
+                newName: "CombinedAnalysisResult");
         }
     }
 }

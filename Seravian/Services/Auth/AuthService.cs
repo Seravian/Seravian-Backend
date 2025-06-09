@@ -102,7 +102,7 @@ public class AuthService : IAuthService
 
         if (user.Role == UserRole.Doctor)
         {
-            Doctor doctor = new Doctor { UserId = user.Id, IsVerified = false };
+            Doctor doctor = new Doctor { UserId = user.Id, VerifiedAtUtc = null };
             await _context.Doctors.AddAsync(doctor);
         }
         else if (user.Role == UserRole.Patient)
@@ -193,11 +193,10 @@ public class AuthService : IAuthService
         if (user.Role == UserRole.Doctor)
         {
             var doctor = await _context.Doctors.FirstOrDefaultAsync(d => d.UserId == user.Id);
-            Console.WriteLine(doctor.IsVerified);
-            Console.WriteLine(isDoctorVerified);
 
-            isDoctorVerified = doctor.IsVerified;
+            isDoctorVerified = doctor.VerifiedAtUtc is not null;
         }
+
         Console.WriteLine(isDoctorVerified);
         // Return the tokens and user information
         return new LoginResponseDto
