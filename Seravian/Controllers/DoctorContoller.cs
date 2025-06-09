@@ -100,6 +100,51 @@ public class DoctorController : ControllerBase
         }
     }
 
+    [HttpGet("get-doctor-verification-request")]
+    public async Task<
+        ActionResult<GetDoctorVerificationRequestResponseDto>
+    > GetDoctorVerificationRequest([FromQuery] GetDoctorVerificationRequestRequestDto request)
+    {
+        var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        try
+        {
+            var verificationRequest = await _dbContext
+                .DoctorsVerificationRequests.Include(d => d.Attachments)
+                .FirstOrDefaultAsync(d => d.DoctorId == doctorId && d.Id == request.RequestId);
+
+            if (verificationRequest is null)
+                return BadRequest(
+                    new { Errors = new List<string> { "Verification request not found." } }
+                );
+            var response = new GetDoctorVerificationRequestResponseDto
+            {
+                Id = verificationRequest.Id,
+                RequestedAtUtc = verificationRequest.RequestedAtUtc,
+                Status = verificationRequest.Status,
+                Title = verificationRequest.Title,
+                Description = verificationRequest.Description,
+                DeletedAtUtc = verificationRequest.DeletedAtUtc,
+                ReviewedAtUtc = verificationRequest.ReviewedAtUtc,
+                RejectionNotes = verificationRequest.RejectionNotes,
+                Attachments = verificationRequest
+                    .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                    })
+                    .OrderBy(a => a.FileName)
+                    .ToList(),
+            };
+            return Ok(response);
+        }
+        catch
+        {
+            return BadRequest(
+                new { Errors = new List<string> { "Error getting verification request." } }
+            );
+        }
+    }
+
     [HttpPost("send-doctor-verification-request")]
     [RequestSizeLimit(20_000_000)] // Slightly above 15MB to account for metadata overhead
     public async Task<IActionResult> SendVerificationRequest(
@@ -293,6 +338,11 @@ public class DoctorController : ControllerBase
             );
         }
     }
+}
+
+public class GetDoctorVerificationRequestRequestDto
+{
+    public int RequestId { get; set; }
 }
 
 public class DeleteDoctorVerificationRequestRequestDto
