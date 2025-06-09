@@ -70,6 +70,7 @@ public class DoctorController : ControllerBase
             List<GetDoctorVerificationRequestResponseDto> response = await _dbContext
                 .DoctorsVerificationRequests.Include(d => d.Attachments)
                 .Where(d => d.DoctorId == doctorId)
+                .OrderByDescending(x => x.RequestedAtUtc)
                 .Select(x => new GetDoctorVerificationRequestResponseDto
                 {
                     Id = x.Id,
@@ -86,6 +87,7 @@ public class DoctorController : ControllerBase
                             Id = a.Id,
                             FileName = a.FileName,
                         })
+                        .OrderBy(a => a.FileName)
                         .ToList(),
                 })
                 .ToListAsync();
