@@ -54,6 +54,7 @@ public class DoctorController : ControllerBase
                 Gender = doctor.User.Gender,
                 CreatedAtUtc = doctor.User.CreatedAtUtc,
                 VerifiedAtUtc = doctor.VerifiedAtUtc,
+                SessionPrice = doctor.SessionPrice,
             };
             return Ok(response);
         }
@@ -189,7 +190,9 @@ public class DoctorController : ControllerBase
             Description = request.Description,
             Status = RequestStatus.Pending,
             RequestedAtUtc = nowUtc,
+            SessionPrice = request.SessionPrice,
         };
+
         try
         {
             await _dbContext.DoctorsVerificationRequests.AddAsync(verificationRequest);

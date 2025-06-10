@@ -189,6 +189,7 @@ public class AdminController : ControllerBase
                 verificationRequest.Doctor.VerifiedAtUtc = DateTime.UtcNow;
                 verificationRequest.Doctor.Description = verificationRequest.Description;
                 verificationRequest.Doctor.Title = verificationRequest.Title;
+                verificationRequest.Doctor.SessionPrice = verificationRequest.SessionPrice;
             }
             else
             {
@@ -271,6 +272,7 @@ public class AdminController : ControllerBase
             DateOfBirth = doctor.User.DateOfBirth!.Value,
             DoctorGender = doctor.User.Gender!.Value,
             VerifiedAtUtc = doctor.VerifiedAtUtc,
+            SessionPrice = doctor.SessionPrice,
         };
 
         return Ok(response);

@@ -22,6 +22,10 @@ public class SendVerificationRequestDtoValidator
             .Must(x => !string.IsNullOrWhiteSpace(x))
             .WithMessage("Description cannot be whitespace.");
 
+        RuleFor(x => x.SessionPrice)
+            .GreaterThan(0)
+            .WithMessage("Session price must be greater than 0.");
+
         RuleFor(x => x.Title).IsInEnum().WithMessage("Invalid doctor title is provided.");
 
         RuleFor(x => x.Attachments)

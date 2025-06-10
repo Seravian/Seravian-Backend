@@ -102,7 +102,14 @@ public class AuthService : IAuthService
 
         if (user.Role == UserRole.Doctor)
         {
-            Doctor doctor = new Doctor { UserId = user.Id, VerifiedAtUtc = null };
+            Doctor doctor = new Doctor
+            {
+                UserId = user.Id,
+                VerifiedAtUtc = null,
+                SessionPrice = null,
+                Title = null,
+                Description = null,
+            };
             await _context.Doctors.AddAsync(doctor);
         }
         else if (user.Role == UserRole.Patient)

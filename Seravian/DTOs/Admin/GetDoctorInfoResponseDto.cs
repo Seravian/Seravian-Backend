@@ -11,5 +11,6 @@ partial class GetDoctorInfoResponseDto
     public string DoctorEmail { get; set; }
     public DateOnly DateOfBirth { get; set; }
     public Gender DoctorGender { get; set; }
+    public int? SessionPrice { get; set; }
     public DateTime? VerifiedAtUtc { get; set; }
 }
