@@ -32,25 +32,22 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var data = _dbContext
+            var verificationRequests = _dbContext
                 .DoctorsVerificationRequests.AsNoTracking()
                 .AsSplitQuery()
                 .Include(d => d.Doctor)
                 .ThenInclude(d => d.User)
-                .Include(d => d.Attachments);
-
-            IQueryable<DoctorVerificationRequest> requestsQueryable;
+                .Include(d => d.Attachments)
+                .Where(d => d.Status != RequestStatus.Deleted);
 
             if (request.StatusFilter is not null)
             {
-                requestsQueryable = data.Where(d => d.Status == request.StatusFilter);
-            }
-            else
-            {
-                requestsQueryable = data;
+                verificationRequests = verificationRequests.Where(d =>
+                    d.Status == request.StatusFilter
+                );
             }
 
-            var response = await requestsQueryable
+            var response = await verificationRequests
                 .Select(x => new GetDoctorVerificationRequestResponseDto
                 {
                     Id = x.Id,
@@ -101,7 +98,9 @@ public class AdminController : ControllerBase
                 .Include(d => d.Doctor)
                 .ThenInclude(d => d.User)
                 .Include(d => d.Attachments)
-                .FirstOrDefaultAsync(d => d.Id == request.RequestId);
+                .FirstOrDefaultAsync(d =>
+                    d.Id == request.RequestId && d.Status != RequestStatus.Deleted
+                );
 
             if (verificationRequest is null)
                 return BadRequest(
