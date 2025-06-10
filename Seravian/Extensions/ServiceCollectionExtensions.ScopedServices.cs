@@ -10,6 +10,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<DeepFaceService>();
         services.AddSingleton<TTSService>();
         services.AddSingleton<IAIResponseTrackerService, AIResponseTrackerService>();
+        services.AddSingleton<DoctorsVerificationRequestsAttachmentFilesAccessLockingManager>();
 
         return services;
     }
