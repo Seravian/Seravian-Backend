@@ -8,6 +8,7 @@ using Seravian.DTOs.Admin;
 
 [Route("[controller]")]
 [ApiController]
+[Authorize(Roles = "Doctor,Patient")]
 public class AdminController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
@@ -67,6 +68,7 @@ public class AdminController : ControllerBase
                         {
                             Id = a.Id,
                             FileName = a.FileName,
+                            SizeInBytes = a.FileSize,
                         })
                         .OrderBy(a => a.FileName)
                         .ToList(),
@@ -126,6 +128,7 @@ public class AdminController : ControllerBase
                     {
                         Id = a.Id,
                         FileName = a.FileName,
+                        SizeInBytes = a.FileSize,
                     })
                     .OrderBy(a => a.FileName)
                     .ToList(),
@@ -384,40 +387,4 @@ public class AdminController : ControllerBase
             }
         }
     }
-}
-
-public class DownloadAttachmentRequestDto
-{
-    public Guid AttachmentId { get; set; }
-}
-
-public class DownloadAllAttachmentsRequestDto
-{
-    public int RequestId { get; set; }
-}
-
-public class ReviewDoctorVerificationRequestRequestDto
-{
-    public int RequestId { get; set; }
-    public bool IsApproved { get; set; }
-    public string? RejectionNotes { get; set; }
-}
-
-partial class GetDoctorInfoResponseDto
-{
-    public Guid Id { get; set; }
-    public DoctorTitle? Title { get; set; }
-
-    public string? Description { get; set; }
-
-    public string DoctorFullName { get; set; }
-    public string DoctorEmail { get; set; }
-    public DateOnly DateOfBirth { get; set; }
-    public Gender DoctorGender { get; set; }
-    public DateTime? VerifiedAtUtc { get; set; }
-}
-
-public class GetDoctorInfoRequestDto
-{
-    public Guid DoctorId { get; set; }
 }

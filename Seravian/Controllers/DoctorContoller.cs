@@ -349,20 +349,3 @@ public class DoctorController : ControllerBase
         }
     }
 }
-
-public class GetDoctorVerificationRequestRequestDto
-{
-    public int RequestId { get; set; }
-}
-
-public class DeleteDoctorVerificationRequestRequestDto
-{
-    public int RequestId { get; set; }
-}
-
-public class SendVerificationRequestRequestDto
-{
-    public DoctorTitle Title { get; set; }
-    public string Description { get; set; }
-    public List<IFormFile> Attachments { get; set; } = [];
-}
