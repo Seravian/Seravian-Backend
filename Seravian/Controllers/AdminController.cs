@@ -210,13 +210,20 @@ public class AdminController : ControllerBase
                 {
                     try
                     {
-                        _lockingManager.EnterWrite(verificationRequest.Id);
-                        Directory.Delete(uploadsFolder, recursive: true);
-                        _lockingManager.ExitWrite(verificationRequest.Id);
+                        using (
+                            var readLock = await _lockingManager.EnterWriteAsync(
+                                verificationRequest.Id
+                            )
+                        )
+                        {
+                            Directory.Delete(uploadsFolder, recursive: true);
+                        }
                     }
                     catch
                     {
-                        _lockingManager.ExitWrite(verificationRequest.Id);
+                        return BadRequest(
+                            new { Errors = new List<string> { "Failed to delete request files." } }
+                        );
                     }
                 }
             }
@@ -289,17 +296,23 @@ public class AdminController : ControllerBase
             return BadRequest(new { Errors = new List<string> { "file is deleted" } });
         }
 
-        _lockingManager.EnterRead(attachment.DoctorVerificationRequestId);
-        if (!System.IO.File.Exists(attachment.FilePath))
-            return NotFound("File does not exist on server.");
-        try
+        using (
+            var readLock = await _lockingManager.EnterReadAsync(
+                attachment.DoctorVerificationRequestId
+            )
+        )
         {
-            var stream = System.IO.File.OpenRead(attachment.FilePath);
-            return File(stream, "application/octet-stream", attachment.FileName);
-        }
-        finally
-        {
-            _lockingManager.ExitRead(attachment.DoctorVerificationRequestId);
+            if (!System.IO.File.Exists(attachment.FilePath))
+                return NotFound("File does not exist on server.");
+            try
+            {
+                var stream = System.IO.File.OpenRead(attachment.FilePath);
+                return File(stream, "application/octet-stream", attachment.FileName);
+            }
+            catch
+            {
+                return BadRequest(new { Errors = new List<string> { "Failed to download file." } });
+            }
         }
     }
 
@@ -330,37 +343,46 @@ public class AdminController : ControllerBase
         if (!attachments.Any())
             return NotFound("No attachments found for this request.");
 
-        var zipStream = new MemoryStream();
-        _lockingManager.EnterRead(verificationRequest.Id);
-        try
+        using (var readLock = await _lockingManager.EnterReadAsync(verificationRequest.Id))
         {
-            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+            var zipStream = new MemoryStream();
+            try
             {
-                foreach (var attachment in attachments)
+                using (
+                    var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true)
+                )
                 {
-                    if (!System.IO.File.Exists(attachment.FilePath))
-                        return NotFound($"File '{attachment.FileName}' does not exist on server.");
+                    foreach (var attachment in attachments)
+                    {
+                        if (!System.IO.File.Exists(attachment.FilePath))
+                            return NotFound(
+                                $"File '{attachment.FileName}' does not exist on server."
+                            );
 
-                    var fileBytes = await System.IO.File.ReadAllBytesAsync(attachment.FilePath);
-                    var entry = archive.CreateEntry(attachment.FileName, CompressionLevel.Fastest);
-                    await using var entryStream = entry.Open();
-                    await entryStream.WriteAsync(fileBytes, 0, fileBytes.Length);
+                        var fileBytes = await System.IO.File.ReadAllBytesAsync(attachment.FilePath);
+                        var entry = archive.CreateEntry(
+                            attachment.FileName,
+                            CompressionLevel.Fastest
+                        );
+                        await using var entryStream = entry.Open();
+                        await entryStream.WriteAsync(fileBytes, 0, fileBytes.Length);
+                    }
                 }
+
+                zipStream.Position = 0;
+
+                return File(
+                    zipStream,
+                    "application/zip",
+                    $"VerificationFiles_{request.RequestId}.zip"
+                );
             }
-
-            zipStream.Position = 0;
-
-            return File(zipStream, "application/zip", $"VerificationFiles_{request.RequestId}.zip");
-        }
-        catch
-        {
-            return BadRequest(
-                new { Errors = new List<string> { "Failed to download attachments." } }
-            );
-        }
-        finally
-        {
-            _lockingManager.ExitRead(verificationRequest.Id);
+            catch
+            {
+                return BadRequest(
+                    new { Errors = new List<string> { "Failed to download attachments." } }
+                );
+            }
         }
     }
 }

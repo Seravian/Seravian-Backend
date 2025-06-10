@@ -13,17 +13,21 @@ public class DoctorController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<DoctorController> _logger;
+    private readonly DoctorsVerificationRequestsAttachmentFilesAccessLockingManager _lockingManager;
+
     private readonly IValidator<SendVerificationRequestRequestDto> _sendVerificationRequestDtoValidator;
 
     public DoctorController(
         ApplicationDbContext dbContext,
         ILogger<DoctorController> logger,
-        IValidator<SendVerificationRequestRequestDto> sendVerificationRequestDtoValidator
+        IValidator<SendVerificationRequestRequestDto> sendVerificationRequestDtoValidator,
+        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager
     )
     {
         _dbContext = dbContext;
         _logger = logger;
         _sendVerificationRequestDtoValidator = sendVerificationRequestDtoValidator;
+        _lockingManager = lockingManager;
     }
 
     [HttpGet("profile")]
@@ -203,13 +207,11 @@ public class DoctorController : ControllerBase
                 }
             );
         }
-
-        try
+        using (var readLock = await _lockingManager.EnterReadAsync(verificationRequest.Id))
         {
-            var savedAttachments = new List<DoctorVerificationRequestAttachment>();
-
-            foreach (var file in request.Attachments)
+            try
             {
+                var savedAttachments = new List<DoctorVerificationRequestAttachment>();
                 var uploadsFolder = Path.Combine(
                     "Uploads",
                     "DoctorsVerificationRequests",
@@ -217,54 +219,68 @@ public class DoctorController : ControllerBase
                     verificationRequest.Id.ToString()
                 );
                 Directory.CreateDirectory(uploadsFolder);
-                var attachmentId = Guid.NewGuid();
-                var uniqueFileName = $"{attachmentId}_{Path.GetFileName(file.FileName)}";
-                var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                Console.WriteLine($"file name: {file.FileName}");
-                Console.WriteLine($"file size: {file.Length} bytes");
-
-                using (var stream = new FileStream(fullPath, FileMode.Create))
+                foreach (var file in request.Attachments)
                 {
-                    await file.CopyToAsync(stream);
+                    var attachmentId = Guid.NewGuid();
+                    var uniqueFileName = $"{attachmentId}_{Path.GetFileName(file.FileName)}";
+                    var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    Console.WriteLine($"file name: {file.FileName}");
+                    Console.WriteLine($"file size: {file.Length} bytes");
+
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    savedAttachments.Add(
+                        new DoctorVerificationRequestAttachment
+                        {
+                            Id = attachmentId,
+                            DoctorVerificationRequestId = verificationRequest.Id,
+                            UploadedAtUtc = nowUtc,
+                            FileName = file.FileName,
+                            FilePath = fullPath,
+                            ContentType = file.ContentType,
+                            FileSize = file.Length,
+                        }
+                    );
                 }
 
-                savedAttachments.Add(
-                    new DoctorVerificationRequestAttachment
-                    {
-                        Id = attachmentId,
-                        DoctorVerificationRequestId = verificationRequest.Id,
-                        UploadedAtUtc = nowUtc,
-                        FileName = file.FileName,
-                        FilePath = fullPath,
-                        ContentType = file.ContentType,
-                        FileSize = file.Length,
-                    }
+                await _dbContext.DoctorsVerificationRequestsAttachments.AddRangeAsync(
+                    savedAttachments
                 );
-            }
-
-            await _dbContext.DoctorsVerificationRequestsAttachments.AddRangeAsync(savedAttachments);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { Message = "Verification request sent successfully." });
-        }
-        catch
-        {
-            try
-            {
-                _dbContext.DoctorsVerificationRequests.Remove(verificationRequest);
-
                 await _dbContext.SaveChangesAsync();
-                //clean up the uploads and in db
-                var uploadsFolder = Path.Combine(
-                    "Uploads",
-                    "DoctorsVerificationRequests",
-                    doctorId.ToString(),
-                    verificationRequest.Id.ToString()
-                );
-                Directory.Delete(uploadsFolder, true);
+                return Ok(new { Message = "Verification request sent successfully." });
             }
-            catch (System.Exception)
+            catch
             {
+                try
+                {
+                    _dbContext.DoctorsVerificationRequests.Remove(verificationRequest);
+
+                    await _dbContext.SaveChangesAsync();
+                    //clean up the uploads and in db
+                    var uploadsFolder = Path.Combine(
+                        "Uploads",
+                        "DoctorsVerificationRequests",
+                        doctorId.ToString(),
+                        verificationRequest.Id.ToString()
+                    );
+                    Directory.Delete(uploadsFolder, true);
+                }
+                catch (System.Exception)
+                {
+                    return BadRequest(
+                        new
+                        {
+                            Errors = new List<string>
+                            {
+                                "An error occurred while saving the attachments.",
+                            },
+                        }
+                    );
+                }
                 return BadRequest(
                     new
                     {
@@ -275,12 +291,6 @@ public class DoctorController : ControllerBase
                     }
                 );
             }
-            return BadRequest(
-                new
-                {
-                    Errors = new List<string> { "An error occurred while saving the attachments." },
-                }
-            );
         }
     }
 

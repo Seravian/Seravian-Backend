@@ -1,34 +1,19 @@
 using System.Collections.Concurrent;
+using Nito.AsyncEx;
 
 public class DoctorsVerificationRequestsAttachmentFilesAccessLockingManager
 {
-    private readonly ConcurrentDictionary<int, ReaderWriterLockSlim> _locks = new();
+    private readonly ConcurrentDictionary<int, AsyncReaderWriterLock> _locks = [];
 
-    public void EnterRead(int requestId)
+    public async Task<IDisposable> EnterReadAsync(int requestId)
     {
-        var rwLock = _locks.GetOrAdd(requestId, _ => new ReaderWriterLockSlim());
-        rwLock.EnterReadLock();
+        var rwLock = _locks.GetOrAdd(requestId, _ => new AsyncReaderWriterLock());
+        return await rwLock.ReaderLockAsync();
     }
 
-    public void ExitRead(int requestId)
+    public async Task<IDisposable> EnterWriteAsync(int requestId)
     {
-        if (_locks.TryGetValue(requestId, out var rwLock))
-        {
-            rwLock.ExitReadLock();
-        }
-    }
-
-    public void EnterWrite(int requestId)
-    {
-        var rwLock = _locks.GetOrAdd(requestId, _ => new ReaderWriterLockSlim());
-        rwLock.EnterWriteLock();
-    }
-
-    public void ExitWrite(int requestId)
-    {
-        if (_locks.TryGetValue(requestId, out var rwLock))
-        {
-            rwLock.ExitWriteLock();
-        }
+        var rwLock = _locks.GetOrAdd(requestId, _ => new AsyncReaderWriterLock());
+        return await rwLock.WriterLockAsync();
     }
 }
