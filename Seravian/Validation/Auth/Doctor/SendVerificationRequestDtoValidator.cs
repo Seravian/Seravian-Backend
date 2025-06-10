@@ -1,4 +1,5 @@
 using FluentValidation;
+using Seravian.DTOs.Doctor;
 
 public class SendVerificationRequestDtoValidator
     : AbstractValidator<SendVerificationRequestRequestDto>
