@@ -8,7 +8,7 @@ using Seravian.DTOs.Admin;
 
 [Route("[controller]")]
 [ApiController]
-[Authorize(Roles = "Doctor,Patient")]
+[Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
