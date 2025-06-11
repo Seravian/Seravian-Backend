@@ -136,6 +136,7 @@ public class PatientSessionsController : ControllerBase
         }
     }
 
+    [HttpDelete("delete-pending-session-booking")]
     public async Task<IActionResult> DeletePendingSessionBookingAsync(
         [FromQuery] DeletePendingSessionBookingRequestDto request
     )
