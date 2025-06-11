@@ -435,8 +435,3 @@ public class DoctorController : ControllerBase
         }
     }
 }
-
-internal class SendVerificationRequestResponseDto
-{
-    public int VerificationRequestId { get; set; }
-}
