@@ -37,28 +37,44 @@ public class ExpiredSessionBookingRejectionService : BackgroundService
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         var utcNow = DateTime.UtcNow;
-
-        var expiredBookings = await dbContext
-            .SessionBookings.Where(x =>
-                x.Status == SessionBookingStatus.Pending
-                && x.PatientIsAvailableToUtc < utcNow.AddHours(1)
-            )
-            .ToListAsync();
-
-        if (!expiredBookings.Any())
-            return;
-
-        foreach (var booking in expiredBookings)
+        try
         {
-            booking.Status = SessionBookingStatus.Rejected;
-            booking.UpdatedAtUtc = utcNow;
+            var expiredBookings = await dbContext
+                .SessionBookings.Where(x =>
+                    x.Status == SessionBookingStatus.Pending
+                    && x.PatientIsAvailableToUtc < utcNow.AddHours(1)
+                )
+                .ToListAsync();
+
+            if (!expiredBookings.Any())
+                return;
+
+            foreach (var booking in expiredBookings)
+            {
+                booking.Status = SessionBookingStatus.Rejected;
+                booking.UpdatedAtUtc = utcNow;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Rejected {Count} expired pending session bookings.",
+                expiredBookings.Count
+            );
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Rejected {Count} expired pending session bookings.",
-            expiredBookings.Count
-        );
+        //handle concurrency
+        catch (DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning(
+                "Concurrency error occurred while rejecting expired pending session bookings."
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error occurred while rejecting expired pending session bookings."
+            );
+        }
     }
 }
