@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Mail;
 using System.Security.Claims;
 using FluentValidation;
@@ -15,6 +16,7 @@ public class DoctorController : ControllerBase
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<DoctorController> _logger;
     private readonly DoctorsVerificationRequestsAttachmentFilesAccessLockingManager _lockingManager;
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> _uploadProfileImageLocks = [];
 
     private readonly IValidator<SendVerificationRequestRequestDto> _sendVerificationRequestDtoValidator;
 
@@ -78,7 +80,6 @@ public class DoctorController : ControllerBase
         if (doctor is null)
             return BadRequest("Doctor not found.");
 
-        var fileName = $"{doctorId}{Path.GetExtension(profileImageFile.FileName)}";
         if (profileImageFile == null || profileImageFile.Length == 0)
             return BadRequest("No image provided.");
 
@@ -102,18 +103,43 @@ public class DoctorController : ControllerBase
         if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(extension))
             return BadRequest("Invalid image extension.");
 
-        var filePath = Path.Combine(uploadFolderPath, doctorId.ToString());
+        var filename = doctorId + extension;
+        var filePath = Path.Combine(uploadFolderPath, filename);
 
-        // 🔄 Save new image (overwrite if exists)
-        using (
-            var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None)
-        )
+        var semaphore = _uploadProfileImageLocks.GetOrAdd(doctorId, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
         {
-            await profileImageFile.CopyToAsync(stream);
-        }
-        doctor.ProfileImagePath = fileName;
+            // 🔁 Delete old files with any extension
+            var existingFiles = Directory.GetFiles(uploadFolderPath, doctorId + ".*");
+            foreach (var file in existingFiles)
+            {
+                System.IO.File.Delete(file);
+            }
 
-        return Ok(new { ImageUrl = _config["BaseUrl"] + fileName });
+            using (
+                var stream = new FileStream(
+                    filePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                await profileImageFile.CopyToAsync(stream);
+            }
+            doctor.ProfileImagePath = "doctor-images/" + filename;
+
+            await _dbContext.SaveChangesAsync();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+        // 🔄 Save new image (overwrite if exists)
+
+
+        return Ok(new { ImageUrl = _config["BaseUrl"] + doctor.ProfileImagePath });
     }
 
     [HttpGet("get-doctor-verification-requests")]
