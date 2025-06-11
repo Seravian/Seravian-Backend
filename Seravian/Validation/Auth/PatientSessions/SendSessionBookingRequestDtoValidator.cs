@@ -1,4 +1,5 @@
 using FluentValidation;
+using Seravian.DTOs.PatientSessions;
 
 public class SendSessionBookingRequestDtoValidator
     : AbstractValidator<CreateSessionBookingRequestDto>
