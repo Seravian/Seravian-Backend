@@ -77,6 +77,54 @@ public class PatientSessionsController : ControllerBase
             return BadRequest(new { Errors = new List<string> { "Something went wrong." } });
         }
     }
+
+    [HttpDelete("delete-pending-session-booking")]
+    public async Task<IActionResult> DeletePendingSessionBookingAsync(
+        [FromQuery] DeletePendingSessionBookingRequestDto request
+    )
+    {
+        try
+        {
+            var sessionBooking = await _dbContext.SessionBookings.FirstOrDefaultAsync(x =>
+                x.Id == request.SessionBookingId
+            );
+
+            if (sessionBooking is null)
+                return BadRequest(
+                    new { Errors = new List<string> { "Session booking not found." } }
+                );
+
+            if (sessionBooking.Status != SessionBookingStatus.Pending)
+                return BadRequest(
+                    new { Errors = new List<string> { "Session booking is not pending." } }
+                );
+
+            sessionBooking.Status = SessionBookingStatus.Deleted;
+            await _dbContext.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(
+                new
+                {
+                    Errors = new List<string>
+                    {
+                        "The session booking was modified by someone else. Please refresh and try again.",
+                    },
+                }
+            );
+        }
+        catch
+        {
+            return BadRequest(new { Errors = new List<string> { "Something went wrong." } });
+        }
+    }
+}
+
+public class DeletePendingSessionBookingRequestDto
+{
+    public Guid SessionBookingId { get; set; }
 }
 
 public class GetDoctorRequestDto

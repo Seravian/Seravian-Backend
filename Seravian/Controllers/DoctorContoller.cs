@@ -299,7 +299,7 @@ public class DoctorController : ControllerBase
 
     [HttpDelete("delete-doctor-verification-request")]
     public async Task<ActionResult<DoctorProfileResponseDto>> DeleteDoctorVerificationRequest(
-        [FromBody] DeleteDoctorVerificationRequestRequestDto request
+        [FromQuery] DeleteDoctorVerificationRequestRequestDto request
     )
     {
         var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
