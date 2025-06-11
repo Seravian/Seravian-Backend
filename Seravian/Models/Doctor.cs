@@ -6,6 +6,7 @@ public class Doctor
 
     // Optional detailed description or biography
     public string? Description { get; set; }
+    public string? ProfileImagePath { get; set; }
     public virtual User User { get; set; }
 
     public DateTime? VerifiedAtUtc { get; set; }

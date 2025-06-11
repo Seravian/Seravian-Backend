@@ -14,16 +14,19 @@ public class AdminController : ControllerBase
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<AdminController> _logger;
     private readonly DoctorsVerificationRequestsAttachmentFilesAccessLockingManager _lockingManager;
+    private readonly IConfiguration _config;
 
     public AdminController(
         ApplicationDbContext dbContext,
         ILogger<AdminController> logger,
-        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager
+        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager,
+        IConfiguration config
     )
     {
         _dbContext = dbContext;
         _logger = logger;
         _lockingManager = lockingManager;
+        _config = config;
     }
 
     [HttpGet("get-doctors-verification-requests")]
@@ -63,6 +66,10 @@ public class AdminController : ControllerBase
                     Description = x.Description,
                     DeletedAtUtc = x.DeletedAtUtc,
                     ReviewedAtUtc = x.ReviewedAtUtc,
+                    DoctorImageUrl =
+                        x.Doctor.ProfileImagePath != null
+                            ? _config["BaseUrl"] + x.Doctor.ProfileImagePath
+                            : null,
                     Attachments = x
                         .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
                         {
@@ -123,6 +130,10 @@ public class AdminController : ControllerBase
                 Description = verificationRequest.Description,
                 DeletedAtUtc = verificationRequest.DeletedAtUtc,
                 ReviewedAtUtc = verificationRequest.ReviewedAtUtc,
+                DoctorImageUrl =
+                    verificationRequest.Doctor.ProfileImagePath != null
+                        ? _config["BaseUrl"] + verificationRequest.Doctor.ProfileImagePath
+                        : null,
                 Attachments = verificationRequest
                     .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
                     {
@@ -273,6 +284,9 @@ public class AdminController : ControllerBase
             DoctorGender = doctor.User.Gender!.Value,
             VerifiedAtUtc = doctor.VerifiedAtUtc,
             SessionPrice = doctor.SessionPrice,
+            ProfileImageUrl = doctor.ProfileImagePath is not null
+                ? _config["BaseUrl"] + doctor.ProfileImagePath
+                : null,
         };
 
         return Ok(response);

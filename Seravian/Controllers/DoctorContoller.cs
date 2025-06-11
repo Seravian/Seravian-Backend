@@ -11,6 +11,7 @@ using Seravian.DTOs.Doctor;
 [Authorize(Roles = "Doctor")]
 public class DoctorController : ControllerBase
 {
+    private readonly IConfiguration _config;
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<DoctorController> _logger;
     private readonly DoctorsVerificationRequestsAttachmentFilesAccessLockingManager _lockingManager;
@@ -21,13 +22,15 @@ public class DoctorController : ControllerBase
         ApplicationDbContext dbContext,
         ILogger<DoctorController> logger,
         IValidator<SendVerificationRequestRequestDto> sendVerificationRequestDtoValidator,
-        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager
+        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager,
+        IConfiguration configuration
     )
     {
         _dbContext = dbContext;
         _logger = logger;
         _sendVerificationRequestDtoValidator = sendVerificationRequestDtoValidator;
         _lockingManager = lockingManager;
+        _config = configuration;
     }
 
     [HttpGet("profile")]
@@ -55,6 +58,9 @@ public class DoctorController : ControllerBase
                 CreatedAtUtc = doctor.User.CreatedAtUtc,
                 VerifiedAtUtc = doctor.VerifiedAtUtc,
                 SessionPrice = doctor.SessionPrice,
+                ProfileImageUrl = doctor.ProfileImagePath is not null
+                    ? _config["BaseUrl"] + doctor.ProfileImagePath
+                    : null,
             };
             return Ok(response);
         }
@@ -62,6 +68,52 @@ public class DoctorController : ControllerBase
         {
             return BadRequest();
         }
+    }
+
+    [HttpPost("upload-profile-image")]
+    public async Task<IActionResult> UploadDoctorImage([FromForm] IFormFile profileImageFile)
+    {
+        var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var doctor = await _dbContext.Doctors.FirstOrDefaultAsync(d => d.UserId == doctorId);
+        if (doctor is null)
+            return BadRequest("Doctor not found.");
+
+        var fileName = $"{doctorId}{Path.GetExtension(profileImageFile.FileName)}";
+        if (profileImageFile == null || profileImageFile.Length == 0)
+            return BadRequest("No image provided.");
+
+        // Max 5MB
+        const long maxFileSize = 5 * 1024 * 1024;
+        if (profileImageFile.Length > maxFileSize)
+            return BadRequest("File size exceeds the 5MB limit.");
+
+        // Only allow specific content types
+        var allowedContentTypes = new[] { "image/jpeg", "image/jpg", "image/png" };
+        if (!allowedContentTypes.Contains(profileImageFile.ContentType.ToLower()))
+            return BadRequest("Only PNG and JPEG images are allowed.");
+
+        var uploadFolderPath = Path.Combine("wwwroot", "doctor-images");
+        if (!Directory.Exists(uploadFolderPath))
+            Directory.CreateDirectory(uploadFolderPath);
+
+        var extension = Path.GetExtension(profileImageFile.FileName).ToLower();
+
+        // Sanitize extension
+        if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(extension))
+            return BadRequest("Invalid image extension.");
+
+        var filePath = Path.Combine(uploadFolderPath, doctorId.ToString());
+
+        // 🔄 Save new image (overwrite if exists)
+        using (
+            var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None)
+        )
+        {
+            await profileImageFile.CopyToAsync(stream);
+        }
+        doctor.ProfileImagePath = fileName;
+
+        return Ok(new { ImageUrl = _config["BaseUrl"] + fileName });
     }
 
     [HttpGet("get-doctor-verification-requests")]

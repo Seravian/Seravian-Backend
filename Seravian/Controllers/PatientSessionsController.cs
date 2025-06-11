@@ -11,6 +11,7 @@ using Seravian.DTOs.PatientSessions;
 [Authorize(Roles = "Patient")]
 public class PatientSessionsController : ControllerBase
 {
+    private readonly IConfiguration _config;
     private readonly ApplicationDbContext _dbContext;
 
     //validators
@@ -18,9 +19,11 @@ public class PatientSessionsController : ControllerBase
 
     public PatientSessionsController(
         ApplicationDbContext dbContext,
-        IValidator<CreateSessionBookingRequestDto> sendSessionBookingRequestDtoValidator
+        IValidator<CreateSessionBookingRequestDto> sendSessionBookingRequestDtoValidator,
+        IConfiguration configuration
     )
     {
+        _config = configuration;
         _dbContext = dbContext;
         _sendSessionBookingRequestDtoValidator = sendSessionBookingRequestDtoValidator;
     }
@@ -43,6 +46,8 @@ public class PatientSessionsController : ControllerBase
                     DoctorFullName = d.User.FullName!,
                     DoctorAge = DateTime.UtcNow.Year - d.User.DateOfBirth!.Value.Year,
                     DoctorGender = d.User.Gender!.Value,
+                    DoctorImageUrl =
+                        d.ProfileImagePath != null ? _config["BaseUrl"] + d.ProfileImagePath : null,
                 })
                 .OrderBy(d => d.DoctorFullName)
                 .ToListAsync();
@@ -221,6 +226,10 @@ public class PatientSessionsController : ControllerBase
                     Status = x.Status,
                     DoctorNote = x.DoctorNote,
                     CreatedAtUtc = x.CreatedAtUtc,
+                    DoctorImageUrl =
+                        x.Doctor.ProfileImagePath != null
+                            ? _config["BaseUrl"] + x.Doctor.ProfileImagePath
+                            : null,
                 })
                 .OrderByDescending(x =>
                     x.ScheduledAtUtc == null ? x.CreatedAtUtc : x.ScheduledAtUtc
@@ -274,6 +283,9 @@ public class PatientSessionsController : ControllerBase
                 Status = sessionBooking.Status,
                 DoctorNote = sessionBooking.DoctorNote,
                 CreatedAtUtc = sessionBooking.CreatedAtUtc,
+                DoctorImageUrl = sessionBooking.Doctor.ProfileImagePath is not null
+                    ? _config["BaseUrl"] + sessionBooking.Doctor.ProfileImagePath
+                    : null,
             };
             return Ok(response);
         }
