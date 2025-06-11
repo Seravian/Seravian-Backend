@@ -208,6 +208,10 @@ public class DoctorSessionsController : ControllerBase
             }
 
             sessionBooking.Status = SessionBookingStatus.Accepted;
+
+            //  remove the next line when using real payment gateway
+            sessionBooking.Status = SessionBookingStatus.Paid;
+
             sessionBooking.UpdatedAtUtc = utcNow;
             await _dbContext.SaveChangesAsync();
             return NoContent();
