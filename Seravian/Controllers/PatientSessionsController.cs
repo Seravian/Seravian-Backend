@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Seravian.ActionFilters;
+using Seravian.DTOs.PatientSessions;
 
 [Route("[controller]")]
 [ApiController]
@@ -278,74 +279,4 @@ public class PatientSessionsController : ControllerBase
             return BadRequest(new { Errors = new List<string> { "Something went wrong." } });
         }
     }
-}
-
-public class GetSessionBookingRequestDto
-{
-    public Guid SessionBookingId { get; set; }
-}
-
-public class GetSessionBookingsResponseDto
-{
-    public Guid Id { get; set; }
-    public Guid DoctorId { get; set; }
-
-    public string DoctorFullName { get; set; }
-
-    public DoctorTitle DoctorTitle { get; set; }
-    public string DoctorDescription { get; set; }
-    public int DoctorAge { get; set; }
-    public Gender DoctorGender { get; set; }
-    public DateTime PatientIsAvailableFromUtc { get; set; }
-    public DateTime PatientIsAvailableToUtc { get; set; }
-    public DateTime? ScheduledAtUtc { get; set; }
-    public int SessionPrice { get; set; }
-    public string? PatientNote { get; set; }
-
-    public string? DoctorNote { get; set; }
-
-    public DateTime CreatedAtUtc { get; set; }
-    public SessionBookingStatus Status { get; set; }
-    public string? DoctorImageUrl { get; set; }
-}
-
-public class GetSessionBookingsRequestDto
-{
-    public SessionBookingStatus? StatusFilter { get; set; }
-}
-
-public class CreateSessionBookingResponseDto
-{
-    public Guid SessionBookingId { get; set; }
-}
-
-public class CreateSessionBookingRequestDto
-{
-    public Guid DoctorId { get; set; }
-    public DateTime PatientIsAvailableFromUtc { get; set; }
-    public DateTime PatientIsAvailableToUtc { get; set; }
-    public string? PatientNote { get; set; }
-}
-
-public class DeletePendingSessionBookingRequestDto
-{
-    public Guid SessionBookingId { get; set; }
-}
-
-public class GetDoctorRequestDto
-{
-    public Guid DoctorId { get; set; }
-}
-
-public class GetDoctorsResponseDto
-{
-    public Guid DoctorId { get; set; }
-    public DoctorTitle DoctorTitle { get; set; }
-    public string DoctorDescription { get; set; }
-    public int DoctorSessionPrice { get; set; }
-
-    public string DoctorFullName { get; set; }
-    public int DoctorAge { get; set; }
-    public Gender DoctorGender { get; set; }
-    public string? DoctorImageUrl { get; set; }
 }
