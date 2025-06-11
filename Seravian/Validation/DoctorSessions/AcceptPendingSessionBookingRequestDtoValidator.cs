@@ -11,6 +11,8 @@ public class AcceptPendingSessionBookingRequestDtoValidator
         RuleFor(x => x.ScheduledAtUtc)
             .NotEmpty()
             .WithMessage("ScheduledAtUtc is required.")
+            .Must(dt => dt.Kind == DateTimeKind.Utc)
+            .WithMessage("ScheduledAtUtc time must be in UTC format.")
             .Must(scheduled => scheduled > DateTime.UtcNow.AddHours(1))
             .WithMessage("Scheduled time must be at least one hour from now.");
     }
