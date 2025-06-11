@@ -6,4 +6,11 @@ using Seravian.ActionFilters;
 [ApiController]
 [Authorize(Roles = "Doctor")]
 [UseVerifiedDoctorOnly]
-public class DoctorSessionsController : ControllerBase { }
+public class DoctorSessionsController : ControllerBase
+{
+    [HttpGet("test")]
+    public async Task<ActionResult> Test()
+    {
+        return Ok("hi");
+    }
+}

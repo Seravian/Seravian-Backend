@@ -25,4 +25,5 @@ public enum SessionBookingStatus
     Accepted,
     Paid,
     Completed,
+    Deleted,
 }

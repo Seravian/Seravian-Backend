@@ -23,22 +23,16 @@ public class VerifiedDoctorOnlyAttribute : Attribute, IAsyncActionFilter
 
         if (!httpContext.User.Identity?.IsAuthenticated ?? true)
         {
-            context.Result = new ForbidResult("User is not authenticated.");
+            context.Result = new ForbidResult();
             return;
         }
 
         var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (string.IsNullOrEmpty(userId))
-        {
-            context.Result = new ForbidResult("User not authenticated.");
-            return;
-        }
-
         // validate if the userId is a valid guid
         if (!Guid.TryParse(userId, out Guid doctorId))
         {
-            context.Result = new ForbidResult("User not authenticated.");
+            context.Result = new ForbidResult();
             return;
         }
 
@@ -46,15 +40,9 @@ public class VerifiedDoctorOnlyAttribute : Attribute, IAsyncActionFilter
             .Doctors.AsNoTracking()
             .FirstOrDefaultAsync(d => d.UserId == doctorId);
 
-        if (doctor == null)
+        if (doctor == null || doctor.VerifiedAtUtc is null)
         {
-            context.Result = new ForbidResult("User not authenticated.");
-            return;
-        }
-
-        if (doctor.VerifiedAtUtc is null)
-        {
-            context.Result = new ForbidResult("doctor is not verified.");
+            context.Result = new ForbidResult();
             return;
         }
 
