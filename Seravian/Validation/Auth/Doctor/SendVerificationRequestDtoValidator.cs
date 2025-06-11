@@ -15,7 +15,10 @@ public class SendVerificationRequestDtoValidator
 
     public SendVerificationRequestDtoValidator()
     {
+        ClassLevelCascadeMode = CascadeMode.Stop;
+
         RuleFor(x => x.Description)
+            .NotNull()
             .NotEmpty()
             .WithMessage("Description is required.")
             .MaximumLength(2000)
@@ -29,16 +32,22 @@ public class SendVerificationRequestDtoValidator
         RuleFor(x => x.Title).IsInEnum().WithMessage("Invalid doctor title is provided.");
 
         RuleFor(x => x.Attachments)
+            .Cascade(CascadeMode.Stop)
             .NotNull()
             .WithMessage("At least one file is required.")
-            .Must(files => files.Count > 0)
+            .Must(attachments => attachments.Count > 0)
             .WithMessage("At least one file is required.")
-            .Must(files => files.Count <= MaxFileCount)
+            .Must(attachments => attachments.Count <= MaxFileCount)
             .WithMessage($"You can upload a maximum of {MaxFileCount} files.")
-            .Must(files => files.Sum(f => f.Length) <= MaxTotalUploadSizeBytes)
+            .Must(attachments => !attachments.Any(attachment => attachment is null))
+            .WithMessage("Any Attachment cannot be null.")
+            .Must(attachments =>
+                attachments.Sum(attachment => attachment.Length) <= MaxTotalUploadSizeBytes
+            )
             .WithMessage($"Total file size must not exceed {MaxTotalUploadSizeBytes}MB.");
 
         RuleForEach(x => x.Attachments)
+            .Cascade(CascadeMode.Stop)
             .ChildRules(file =>
             {
                 file.RuleFor(f => f.FileName)

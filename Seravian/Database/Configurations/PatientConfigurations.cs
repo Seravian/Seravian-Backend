@@ -19,5 +19,12 @@ class PatientConfigurations : IEntityTypeConfiguration<Patient>
             .WithOne(c => c.Patient)
             .HasForeignKey(c => c.PatientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // One patient can have many session bookings
+        builder
+            .HasMany(p => p.SessionBookings)
+            .WithOne(sb => sb.Patient)
+            .HasForeignKey(sb => sb.PatientId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

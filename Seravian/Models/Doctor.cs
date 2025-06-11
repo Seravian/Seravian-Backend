@@ -12,4 +12,6 @@ public class Doctor
 
     public virtual ICollection<DoctorVerificationRequest> DoctorVerificationRequests { get; set; } =
         [];
+
+    public virtual ICollection<SessionBooking> SessionBookings { get; set; } = [];
 }

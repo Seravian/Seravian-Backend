@@ -23,4 +23,5 @@ public class ApplicationDbContext : DbContext
     public DbSet<Patient> Patients { get; set; }
     public DbSet<DoctorVerificationRequest> DoctorsVerificationRequests { get; set; }
     public DbSet<DoctorVerificationRequestAttachment> DoctorsVerificationRequestsAttachments { get; set; }
+    public DbSet<SessionBooking> SessionBookings { get; set; }
 }
