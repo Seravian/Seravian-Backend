@@ -182,7 +182,7 @@ public class DoctorSessionsController : ControllerBase
                 );
             }
 
-            if ((sessionBooking.PatientIsAvailableFromUtc - utcNow) < TimeSpan.FromHours(1))
+            if ((sessionBooking.PatientIsAvailableFromUtc - utcNow) < TimeSpan.FromMinutes(61))
             {
                 return BadRequest(
                     new
