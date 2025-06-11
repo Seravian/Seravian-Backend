@@ -254,7 +254,12 @@ public class DoctorController : ControllerBase
                     savedAttachments
                 );
                 await _dbContext.SaveChangesAsync();
-                return Ok(new { Message = "Verification request sent successfully." });
+                return Ok(
+                    new SendVerificationRequestResponseDto
+                    {
+                        VerificationRequestId = verificationRequest.Id,
+                    }
+                );
             }
             catch
             {
@@ -351,4 +356,9 @@ public class DoctorController : ControllerBase
             );
         }
     }
+}
+
+internal class SendVerificationRequestResponseDto
+{
+    public int VerificationRequestId { get; set; }
 }

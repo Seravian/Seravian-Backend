@@ -8,6 +8,7 @@ public class SessionBooking
     public DateTime PatientIsAvailableFromUtc { get; set; }
     public DateTime PatientIsAvailableToUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+    public int SessionPrice { get; set; }
     public SessionBookingStatus Status { get; set; }
     public string? DoctorNote { get; set; }
     public string? PatientNote { get; set; }
