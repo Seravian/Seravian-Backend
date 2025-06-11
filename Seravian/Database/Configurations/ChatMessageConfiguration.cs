@@ -15,6 +15,8 @@ class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
         // Make Id an identity (auto-increment)
         builder.Property(cm => cm.Id).ValueGeneratedOnAdd(); // This will make the Id auto-incrementing
 
+        builder.Property(x => x.TimestampUtc).HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
         // ChatId as Foreign Key
         builder
             .HasOne(cm => cm.Chat)

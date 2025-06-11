@@ -13,6 +13,10 @@ class DoctorConfigurations : IEntityTypeConfiguration<Doctor>
             .IsUnicode(true);
         builder.Property(d => d.Title).HasConversion<int?>();
 
+        builder
+            .Property(x => x.VerifiedAtUtc)
+            .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
+
         builder.HasOne(x => x.User).WithOne().HasForeignKey<Doctor>(d => d.UserId);
 
         builder

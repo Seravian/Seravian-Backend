@@ -33,5 +33,10 @@ class UserConfiguration : IEntityTypeConfiguration<User>
             .Property(u => u.RowVersion) // Specify the property to configure
             .IsRowVersion() // Marks this property as a concurrency token
             .IsRequired(); // Optional: You can specify if the column is required
+
+        builder.Property(x => x.CreatedAtUtc).HasConversion(UtcDateTimeConverter.DateTimeConverter);
+        builder
+            .Property(x => x.EmailVerifiedAtUtc)
+            .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
     }
 }

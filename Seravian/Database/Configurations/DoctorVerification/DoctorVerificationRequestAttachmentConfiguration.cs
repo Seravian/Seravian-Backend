@@ -22,6 +22,10 @@ public class DoctorVerificationRequestAttachmentConfiguration
         builder.Property(a => a.FileSize).IsRequired();
 
         builder
+            .Property(x => x.UploadedAtUtc)
+            .HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
+        builder
             .HasOne(a => a.DoctorVerificationRequest)
             .WithMany(r => r.Attachments)
             .HasForeignKey(a => a.DoctorVerificationRequestId)
