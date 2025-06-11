@@ -222,6 +222,9 @@ public class PatientSessionsController : ControllerBase
                     DoctorNote = x.DoctorNote,
                     CreatedAtUtc = x.CreatedAtUtc,
                 })
+                .OrderByDescending(x =>
+                    x.ScheduledAtUtc == null ? x.CreatedAtUtc : x.ScheduledAtUtc
+                )
                 .ToListAsync();
             return Ok(response);
         }

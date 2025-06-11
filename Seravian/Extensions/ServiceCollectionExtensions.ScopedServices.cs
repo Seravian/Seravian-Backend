@@ -15,6 +15,15 @@ public static partial class ServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddBackgroundServices(this IServiceCollection services)
+    {
+        services.AddHostedService<AIAudioResponsesCleanupService>();
+        services.AddHostedService<CleanDbBackgroundService>();
+        services.AddHostedService<ExpiredSessionBookingRejectionService>();
+
+        return services;
+    }
+
     public static IServiceCollection AddScopedServices(this IServiceCollection services)
     {
         services.AddScoped<IEmailSender, EmailSender>();

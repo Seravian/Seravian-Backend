@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 public class CleanDbBackgroundService : BackgroundService
 {
     private readonly TimeSpan _interval = TimeSpan.FromHours(12);
-    private IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public CleanDbBackgroundService(IServiceScopeFactory scopeFactory)
     {
