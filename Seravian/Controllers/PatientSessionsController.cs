@@ -306,6 +306,7 @@ public class GetSessionBookingsResponseDto
 
     public DateTime CreatedAtUtc { get; set; }
     public SessionBookingStatus Status { get; set; }
+    public string? DoctorImageUrl { get; set; }
 }
 
 public class GetSessionBookingsRequestDto
@@ -346,4 +347,5 @@ public class GetDoctorsResponseDto
     public string DoctorFullName { get; set; }
     public int DoctorAge { get; set; }
     public Gender DoctorGender { get; set; }
+    public string? DoctorImageUrl { get; set; }
 }
