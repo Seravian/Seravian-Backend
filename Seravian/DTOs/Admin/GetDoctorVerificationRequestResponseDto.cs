@@ -14,7 +14,7 @@ public class GetDoctorVerificationRequestResponseDto
     public DoctorTitle Title { get; set; }
     public string Description { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
-
+    public string? DoctorImageUrl { get; set; }
     public DateTime? ReviewedAtUtc { get; set; }
     public string? RejectionNotes { get; set; }
 

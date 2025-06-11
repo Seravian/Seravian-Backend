@@ -13,4 +13,5 @@ partial class GetDoctorInfoResponseDto
     public Gender DoctorGender { get; set; }
     public int? SessionPrice { get; set; }
     public DateTime? VerifiedAtUtc { get; set; }
+    public string? ProfileImageUrl { get; set; }
 }
