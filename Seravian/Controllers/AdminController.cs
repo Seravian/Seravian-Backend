@@ -82,6 +82,7 @@ public class AdminController : ControllerBase
                     RejectionNotes = x.RejectionNotes,
                     ReviewerId = x.ReviewerId,
                 })
+                .OrderByDescending(x => x.RequestedAtUtc)
                 .ToListAsync();
 
             return Ok(response);
