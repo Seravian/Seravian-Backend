@@ -807,8 +807,11 @@ public partial class ChatController : ControllerBase
                 {
                     try
                     {
+                        // get the diagnosis from the llm and save it and simulate a response
+                        await Task.Delay(TimeSpan.FromSeconds(20));
+
                         using var dbContext = _dbContextFactory.CreateDbContext();
-                        // get the diagnosis from the llm and save it
+
                         var diagnosis = await dbContext.ChatDiagnoses.FirstOrDefaultAsync(c =>
                             c.Id == chatDiagnosis.Id
                         );
