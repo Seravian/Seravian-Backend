@@ -162,7 +162,16 @@ public class AdminController : ControllerBase
     public async Task<ActionResult> ReviewDoctorVerificationRequest(
         ReviewDoctorVerificationRequestRequestDto request
     )
-    {
+    { // rejection notes is only provided when rejected
+        if (request.IsApproved && !string.IsNullOrEmpty(request.RejectionNotes))
+        {
+            return BadRequest(
+                new
+                {
+                    Errors = new List<string> { "Rejection notes is only provided when rejected." },
+                }
+            );
+        }
         try
         {
             var verificationRequest = await _dbContext
