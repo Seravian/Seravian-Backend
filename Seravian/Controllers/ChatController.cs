@@ -843,8 +843,8 @@ public partial class ChatController : ControllerBase
                     }
                     finally
                     {
-                        _llmProcessingManager.Release(request.ChatId);
-                        _aiResponseTracker.MarkResponseComplete(request.ChatId);
+                        _llmDiagnosesLocksManager.Release(request.ChatId);
+                        _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
                     }
                 });
 
