@@ -32,7 +32,7 @@ public class AdminController : ControllerBase
     [HttpGet("get-doctors-verification-requests")]
     public async Task<
         ActionResult<List<GetDoctorVerificationRequestResponseDto>>
-    > GetDoctorsVerificationRequests(GetDoctorVerificationRequestsRequestDto request)
+    > GetDoctorsVerificationRequests([FromQuery] GetDoctorVerificationRequestsRequestDto request)
     {
         try
         {
@@ -98,7 +98,7 @@ public class AdminController : ControllerBase
     [HttpGet("get-doctor-verification-request")]
     public async Task<
         ActionResult<GetDoctorVerificationRequestResponseDto>
-    > GetDoctorVerificationRequest(GetDoctorVerificationRequestRequestDto request)
+    > GetDoctorVerificationRequest([FromQuery] GetDoctorVerificationRequestRequestDto request)
     {
         try
         {
@@ -267,7 +267,7 @@ public class AdminController : ControllerBase
 
     [HttpGet("get-doctor-info")]
     public async Task<ActionResult<GetDoctorVerificationRequestResponseDto>> GetDoctorInfo(
-        GetDoctorInfoRequestDto request
+        [FromQuery] GetDoctorInfoRequestDto request
     )
     {
         if (request.DoctorId == null || request.DoctorId == Guid.Empty)
