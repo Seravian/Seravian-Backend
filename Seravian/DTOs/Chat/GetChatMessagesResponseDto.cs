@@ -1,3 +1,5 @@
+namespace Seravian.DTOs.Chat;
+
 public class GetChatMessagesResponseDto
 {
     public Guid Id { get; set; }

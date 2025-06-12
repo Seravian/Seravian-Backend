@@ -1,4 +1,4 @@
-namespace Seravian.Hubs;
+namespace Seravian.DTOs.ChatHub;
 
 public class JoinChatDto
 {

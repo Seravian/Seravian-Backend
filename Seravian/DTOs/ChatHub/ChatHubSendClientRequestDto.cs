@@ -1,6 +1,6 @@
-namespace Seravian.Hubs;
+namespace Seravian.DTOs.ChatHub;
 
-public class SendClientRequestDto
+public class ChatHubSendClientRequestDto
 {
     public Guid MessageClientId { get; set; }
     public string Message { get; set; }
