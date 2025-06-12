@@ -27,6 +27,11 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
             .HasForeignKey(cm => cm.ChatId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder
+            .HasMany(c => c.ChatDiagnoses)
+            .WithOne(cd => cd.Chat)
+            .HasForeignKey(cd => cd.ChatId)
+            .OnDelete(DeleteBehavior.Cascade);
         // Title is optional
         builder.Property(c => c.Title).HasMaxLength(200); // Set a reasonable max length
 

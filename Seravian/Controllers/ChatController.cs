@@ -21,6 +21,7 @@ public partial class ChatController : ControllerBase
 
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ChatProcessingManager _llmProcessingManager;
+    private readonly ChatDiagnosesLocksManager _llmDiagnosesLocksManager;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly AIAudioAnalyzingService _voiceAnalysisService;
     private readonly LLMService _llmService;
@@ -29,6 +30,7 @@ public partial class ChatController : ControllerBase
     private readonly IOptionsMonitor<AudioPathsSettings> _audioPathsSettings;
     private readonly ILogger<ChatController> _logger;
     private readonly IAIResponseTrackerService _aiResponseTracker;
+    private readonly IAIDiagnosisTrackerService _aiDiagnosisTracker;
 
     public ChatController(
         ApplicationDbContext dbContext,
@@ -41,7 +43,9 @@ public partial class ChatController : ControllerBase
         IAudioService audioService,
         IOptionsMonitor<AudioPathsSettings> audioPathsSettings,
         IAIResponseTrackerService aiResponseTracker,
-        ILogger<ChatController> logger
+        ILogger<ChatController> logger,
+        ChatDiagnosesLocksManager llmDiagnosesLocksManager,
+        IAIDiagnosisTrackerService aiDiagnosisTracker
     )
     {
         _dbContext = dbContext;
@@ -55,6 +59,8 @@ public partial class ChatController : ControllerBase
         _audioPathsSettings = audioPathsSettings;
         _aiResponseTracker = aiResponseTracker;
         _logger = logger;
+        _llmDiagnosesLocksManager = llmDiagnosesLocksManager;
+        _aiDiagnosisTracker = aiDiagnosisTracker;
     }
 
     [HttpPost("create")]
@@ -647,6 +653,214 @@ public partial class ChatController : ControllerBase
             _llmProcessingManager.Release(chatId);
             _aiResponseTracker.MarkResponseComplete(chatId);
             return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("get-chat-diagnosis-details")]
+    public async Task<
+        ActionResult<GetChatDiagnosisDetailsResponseDto>
+    > GetChatDiagnosisDetailsAsync([FromQuery] GetChatDiagnosisDetailsRequestDto request)
+    {
+        try
+        {
+            var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+            var chat = await _dbContext
+                .ChatDiagnoses.Include(c => c.Chat)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c =>
+                    c.Id == request.ChatDiagnosisId && c.Chat.PatientId == patientId
+                );
+
+            if (chat is null)
+            {
+                return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+            }
+
+            return Ok(
+                new GetChatDiagnosisDetailsResponseDto
+                {
+                    Id = chat.Id,
+                    Description = chat.Description,
+                    RequestedAtUtc = chat.RequestedAtUtc,
+                    CompletedAtUtc = chat.CompletedAtUtc,
+                }
+            );
+        }
+        catch
+        {
+            return BadRequest(new { Errors = new List<string> { "an error occurred" } });
+        }
+    }
+
+    [HttpGet("get-chat-diagnoses")]
+    public async Task<ActionResult<List<GetChatDiagnosisResponseDto>>> GetChatDiagnosesAsync(
+        [FromQuery] GetChatDiagnosisRequestDto request
+    )
+    {
+        try
+        {
+            var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+            var chatDiagnoses = await _dbContext
+                .ChatDiagnoses.Include(c => c.Chat)
+                .AsNoTracking()
+                .Where(c => c.Chat.PatientId == patientId && request.ChatId == c.ChatId)
+                .Select(c => new GetChatDiagnosisResponseDto
+                {
+                    Id = c.Id,
+                    RequestedAtUtc = c.RequestedAtUtc,
+                    CompletedAtUtc = c.CompletedAtUtc,
+                })
+                .OrderByDescending(c => c.RequestedAtUtc)
+                .ToListAsync();
+
+            return Ok(chatDiagnoses);
+        }
+        catch
+        {
+            return BadRequest(new { Errors = new List<string> { "an error occurred" } });
+        }
+    }
+
+    [HttpGet("is-diagnosing")]
+    public async Task<ActionResult<IsDiagnosingResponseDto>> IsDiagnosingAsync(
+        [FromQuery] IsDiagnosingRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var chatId = request.ChatId;
+
+        if (
+            !await _dbContext.Chats.AnyAsync(c =>
+                c.Id == chatId && c.PatientId == patientId && !c.IsDeleted
+            )
+        )
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+
+        var isDiagnosing = _aiDiagnosisTracker.IsDiagnosing(chatId);
+
+        return Ok(new IsDiagnosingResponseDto { IsDiagnosing = isDiagnosing });
+    }
+
+    [HttpPost("create-chat-diagnosis")]
+    public async Task<ActionResult<CreateChatDiagnosisResponseDto>> CreateChatDiagnosisAsync(
+        [FromBody] CreateChatDiagnosisRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var utcNow = DateTime.UtcNow;
+        var chat = await _dbContext
+            .Chats.AsNoTracking()
+            .AsSplitQuery()
+            .Include(c => c.ChatMessages)
+            .Include(c => c.ChatDiagnoses)
+            .FirstOrDefaultAsync(c =>
+                c.Id == request.ChatId && c.PatientId == patientId && !c.IsDeleted
+            );
+        if (chat is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+        if (chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Count() < 1)
+        {
+            return BadRequest(new { Errors = new List<string> { "No patient messages found." } });
+        }
+        if (chat.ChatDiagnoses.Any(c => c.CompletedAtUtc == null))
+        {
+            return BadRequest(
+                new
+                {
+                    Errors = new List<string>
+                    {
+                        "AI diagnosis is still being generated for this chat.",
+                    },
+                }
+            );
+        }
+        if (!await _llmDiagnosesLocksManager.TryLock(request.ChatId))
+        {
+            return Conflict("AI diagnosis is still being generated for this chat. Please wait.");
+        }
+
+        _aiDiagnosisTracker.TryStartDiagnosing(request.ChatId);
+        try
+        {
+            var chatDiagnosis = new ChatDiagnosis
+            {
+                ChatId = request.ChatId,
+                Description = null,
+                RequestedAtUtc = utcNow,
+                CompletedAtUtc = null,
+                StartMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Min(m => m.Id),
+                ToMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Max(m => m.Id),
+            };
+
+            await _dbContext.ChatDiagnoses.AddAsync(chatDiagnosis);
+            await _dbContext.SaveChangesAsync();
+
+            try
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var dbContext = _dbContextFactory.CreateDbContext();
+                        // get the diagnosis from the llm and save it
+                        var diagnosis = await dbContext.ChatDiagnoses.FirstOrDefaultAsync(c =>
+                            c.Id == chatDiagnosis.Id
+                        );
+                        if (diagnosis is null)
+                        {
+                            throw new Exception("Diagnosis not found.");
+                        }
+
+                        // fake description
+                        diagnosis.Description =
+                            $"fake description for testing with a random number: {Random.Shared.Next()}";
+                        diagnosis.CompletedAtUtc = DateTime.UtcNow;
+
+                        await dbContext.SaveChangesAsync();
+
+                        await _hubContext
+                            .Clients.Group(diagnosis.ChatId.ToString())
+                            .NotifyChatDiagnosisReadyAsync(
+                                new NotifyChatDiagnosisReadyDto
+                                {
+                                    ChatId = diagnosis.ChatId,
+                                    ChatDiagnosisId = diagnosis.Id,
+                                }
+                            );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing voice file.");
+                    }
+                    finally
+                    {
+                        _llmProcessingManager.Release(request.ChatId);
+                        _aiResponseTracker.MarkResponseComplete(request.ChatId);
+                    }
+                });
+
+                return Ok(
+                    new CreateChatDiagnosisResponseDto { ChatDiagnosisId = chatDiagnosis.Id }
+                );
+            }
+            catch (Exception ex)
+            {
+                _llmDiagnosesLocksManager.Release(request.ChatId);
+                _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
+                return BadRequest("");
+            }
+        }
+        catch
+        {
+            _llmDiagnosesLocksManager.Release(request.ChatId);
+            _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
+            return BadRequest("");
         }
     }
 }

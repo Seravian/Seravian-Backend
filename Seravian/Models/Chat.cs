@@ -7,5 +7,6 @@ public class Chat
     public DateTime CreatedAtUtc { get; set; }
     public bool IsDeleted { get; set; }
 
-    public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+    public virtual ICollection<ChatMessage> ChatMessages { get; set; } = [];
+    public virtual ICollection<ChatDiagnosis> ChatDiagnoses { get; set; } = [];
 }

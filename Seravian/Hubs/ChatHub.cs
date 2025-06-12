@@ -202,4 +202,7 @@ public interface IChatHubClient
 
     [HubMethodName("notify-ai-audio-response-ready")]
     Task NotifyAiAudioResponseReadyAsync(NotifyAiAudioResponseReadyDto request);
+
+    [HubMethodName("notify-chat-diagnosis-ready")]
+    Task NotifyChatDiagnosisReadyAsync(NotifyChatDiagnosisReadyDto request);
 }
