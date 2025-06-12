@@ -1,3 +1,5 @@
+namespace Seravian.DTOs.Chat;
+
 public class ChatMessageDto
 {
     public long Id { get; set; }

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Seravian.DTOs.Chat;
+using Seravian.DTOs.ChatHub;
 using Seravian.Hubs;
 using TestAIModels;
 
@@ -271,6 +273,115 @@ public partial class ChatController : ControllerBase
             .ToList();
 
         return Ok(messages);
+    }
+
+    [HttpPost("send-client-request")]
+    public async Task<ActionResult<SendClientRequestResponseDto>> SendClientRequest(
+        SendClientRequestRequestDto request
+    )
+    {
+        var utcNow = DateTime.UtcNow;
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        if (request.ChatId == null || request.ChatId == Guid.Empty)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat ID is required." } });
+        }
+        if (string.IsNullOrEmpty(request.Message))
+        {
+            return BadRequest(new { Errors = new List<string> { "Message is required." } });
+        }
+
+        if (
+            !await _dbContext.Chats.AnyAsync(c =>
+                c.Id == request.ChatId && c.PatientId == patientId && !c.IsDeleted
+            )
+        )
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+
+        if (!await _llmProcessingManager.TryLock(request.ChatId))
+        {
+            return Conflict("AI response is still being generated for this chat. Please wait.");
+        }
+
+        _aiResponseTracker.TryStartResponse(request.ChatId);
+        var message = new ChatMessage
+        {
+            TimestampUtc = utcNow,
+            ChatId = request.ChatId,
+            Content = request.Message,
+            MessageType = MessageType.Text,
+        };
+
+        await _dbContext.ChatsMessages.AddAsync(message);
+        await _dbContext.SaveChangesAsync();
+
+        await _hubContext
+            .Clients.Groups(request.ChatId.ToString())
+            .ReceiveClientRequestAsync(
+                new ReceiveClientRequestDto
+                {
+                    Id = message.Id,
+                    Message = request.Message,
+                    TimestampUtc = utcNow,
+                    MessageType = MessageType.Text,
+                    ChatId = request.ChatId,
+                }
+            );
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var response = await _llmService.SendMessageToLLMAsync(
+                    request.Message,
+                    message.Id,
+                    request.ChatId.ToString()
+                );
+                var aiResponseReceivedTimeUtc = DateTime.UtcNow;
+
+                var aiResponse = new ChatMessage
+                {
+                    TimestampUtc = aiResponseReceivedTimeUtc,
+                    ChatId = request.ChatId,
+                    Content = response,
+                    IsAI = true,
+                    MessageType = MessageType.Text,
+                };
+
+                using var dbContext = _dbContextFactory.CreateDbContext();
+
+                await dbContext.ChatsMessages.AddAsync(aiResponse);
+                await dbContext.SaveChangesAsync();
+
+                await _hubContext
+                    .Clients.Group(request.ChatId.ToString())
+                    .ReceiveAIResponseAsync(
+                        new ReceiveAIResponseDto
+                        {
+                            Id = aiResponse.Id,
+                            Message = response,
+                            TimestampUtc = aiResponseReceivedTimeUtc,
+                            MessageType = MessageType.Text,
+                            ChatId = request.ChatId,
+                        }
+                    );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("AI Task Error: " + ex); // Replace with real logger
+            }
+            finally
+            {
+                _llmProcessingManager.Release(request.ChatId);
+                _aiResponseTracker.MarkResponseComplete(request.ChatId);
+            }
+        });
+
+        return Ok(
+            new SendClientRequestResponseDto { MessageId = message.Id, TimestampUtc = utcNow }
+        );
     }
 
     [HttpGet("is-processing")]

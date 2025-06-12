@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Seravian.DTOs.ChatHub;
 using TestAIModels;
 
 namespace Seravian.Hubs;
@@ -65,7 +66,7 @@ public class ChatHub : Hub<IChatHubClient>
     }
 
     [HubMethodName("send-client-request")]
-    public async Task<bool> SendClientRequest(SendClientRequestDto request)
+    public async Task<bool> SendClientRequest(ChatHubSendClientRequestDto request)
     {
         var receiveTimeUtc = DateTime.UtcNow;
         if (string.IsNullOrEmpty(request.Message))
@@ -201,10 +202,4 @@ public interface IChatHubClient
 
     [HubMethodName("notify-ai-audio-response-ready")]
     Task NotifyAiAudioResponseReadyAsync(NotifyAiAudioResponseReadyDto request);
-}
-
-public class NotifyAiAudioResponseReadyDto
-{
-    public long AIAudioId { get; set; }
-    public Guid ChatId { get; set; }
 }

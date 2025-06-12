@@ -1,3 +1,5 @@
+namespace Seravian.DTOs.ChatHub;
+
 public class ConfirmClientRequestDto
 {
     public Guid ChatId { get; set; }
