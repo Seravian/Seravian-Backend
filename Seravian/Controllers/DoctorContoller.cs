@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Mail;
 using System.Security.Claims;
 using FluentValidation;
@@ -11,19 +12,27 @@ using Seravian.DTOs.Doctor;
 [Authorize(Roles = "Doctor")]
 public class DoctorController : ControllerBase
 {
+    private readonly IConfiguration _config;
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<DoctorController> _logger;
+    private readonly DoctorsVerificationRequestsAttachmentFilesAccessLockingManager _lockingManager;
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> _uploadProfileImageLocks = [];
+
     private readonly IValidator<SendVerificationRequestRequestDto> _sendVerificationRequestDtoValidator;
 
     public DoctorController(
         ApplicationDbContext dbContext,
         ILogger<DoctorController> logger,
-        IValidator<SendVerificationRequestRequestDto> sendVerificationRequestDtoValidator
+        IValidator<SendVerificationRequestRequestDto> sendVerificationRequestDtoValidator,
+        DoctorsVerificationRequestsAttachmentFilesAccessLockingManager lockingManager,
+        IConfiguration configuration
     )
     {
         _dbContext = dbContext;
         _logger = logger;
         _sendVerificationRequestDtoValidator = sendVerificationRequestDtoValidator;
+        _lockingManager = lockingManager;
+        _config = configuration;
     }
 
     [HttpGet("profile")]
@@ -50,6 +59,10 @@ public class DoctorController : ControllerBase
                 Gender = doctor.User.Gender,
                 CreatedAtUtc = doctor.User.CreatedAtUtc,
                 VerifiedAtUtc = doctor.VerifiedAtUtc,
+                SessionPrice = doctor.SessionPrice,
+                ProfileImageUrl = doctor.ProfileImagePath is not null
+                    ? _config["BaseUrl"] + doctor.ProfileImagePath
+                    : null,
             };
             return Ok(response);
         }
@@ -57,6 +70,76 @@ public class DoctorController : ControllerBase
         {
             return BadRequest();
         }
+    }
+
+    [HttpPost("upload-profile-image")]
+    public async Task<IActionResult> UploadDoctorImage([FromForm] IFormFile profileImageFile)
+    {
+        var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var doctor = await _dbContext.Doctors.FirstOrDefaultAsync(d => d.UserId == doctorId);
+        if (doctor is null)
+            return BadRequest("Doctor not found.");
+
+        if (profileImageFile == null || profileImageFile.Length == 0)
+            return BadRequest("No image provided.");
+
+        // Max 5MB
+        const long maxFileSize = 5 * 1024 * 1024;
+        if (profileImageFile.Length > maxFileSize)
+            return BadRequest("File size exceeds the 5MB limit.");
+
+        // Only allow specific content types
+        var allowedContentTypes = new[] { "image/jpeg", "image/jpg", "image/png" };
+        if (!allowedContentTypes.Contains(profileImageFile.ContentType.ToLower()))
+            return BadRequest("Only PNG and JPEG images are allowed.");
+
+        var uploadFolderPath = Path.Combine("wwwroot", "doctor-images");
+        if (!Directory.Exists(uploadFolderPath))
+            Directory.CreateDirectory(uploadFolderPath);
+
+        var extension = Path.GetExtension(profileImageFile.FileName).ToLower();
+
+        // Sanitize extension
+        if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(extension))
+            return BadRequest("Invalid image extension.");
+
+        var filename = doctorId + extension;
+        var filePath = Path.Combine(uploadFolderPath, filename);
+
+        var semaphore = _uploadProfileImageLocks.GetOrAdd(doctorId, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
+        {
+            // 🔁 Delete old files with any extension
+            var existingFiles = Directory.GetFiles(uploadFolderPath, doctorId + ".*");
+            foreach (var file in existingFiles)
+            {
+                System.IO.File.Delete(file);
+            }
+
+            using (
+                var stream = new FileStream(
+                    filePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                await profileImageFile.CopyToAsync(stream);
+            }
+            doctor.ProfileImagePath = "doctor-images/" + filename;
+
+            await _dbContext.SaveChangesAsync();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+        // 🔄 Save new image (overwrite if exists)
+
+
+        return Ok(new { ImageUrl = _config["BaseUrl"] + doctor.ProfileImagePath });
     }
 
     [HttpGet("get-doctor-verification-requests")]
@@ -70,6 +153,7 @@ public class DoctorController : ControllerBase
             List<GetDoctorVerificationRequestResponseDto> response = await _dbContext
                 .DoctorsVerificationRequests.Include(d => d.Attachments)
                 .Where(d => d.DoctorId == doctorId)
+                .OrderByDescending(x => x.RequestedAtUtc)
                 .Select(x => new GetDoctorVerificationRequestResponseDto
                 {
                     Id = x.Id,
@@ -86,6 +170,7 @@ public class DoctorController : ControllerBase
                             Id = a.Id,
                             FileName = a.FileName,
                         })
+                        .OrderBy(a => a.FileName)
                         .ToList(),
                 })
                 .ToListAsync();
@@ -95,6 +180,51 @@ public class DoctorController : ControllerBase
         catch
         {
             return BadRequest();
+        }
+    }
+
+    [HttpGet("get-doctor-verification-request")]
+    public async Task<
+        ActionResult<GetDoctorVerificationRequestResponseDto>
+    > GetDoctorVerificationRequest([FromQuery] GetDoctorVerificationRequestRequestDto request)
+    {
+        var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        try
+        {
+            var verificationRequest = await _dbContext
+                .DoctorsVerificationRequests.Include(d => d.Attachments)
+                .FirstOrDefaultAsync(d => d.DoctorId == doctorId && d.Id == request.RequestId);
+
+            if (verificationRequest is null)
+                return BadRequest(
+                    new { Errors = new List<string> { "Verification request not found." } }
+                );
+            var response = new GetDoctorVerificationRequestResponseDto
+            {
+                Id = verificationRequest.Id,
+                RequestedAtUtc = verificationRequest.RequestedAtUtc,
+                Status = verificationRequest.Status,
+                Title = verificationRequest.Title,
+                Description = verificationRequest.Description,
+                DeletedAtUtc = verificationRequest.DeletedAtUtc,
+                ReviewedAtUtc = verificationRequest.ReviewedAtUtc,
+                RejectionNotes = verificationRequest.RejectionNotes,
+                Attachments = verificationRequest
+                    .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                    })
+                    .OrderBy(a => a.FileName)
+                    .ToList(),
+            };
+            return Ok(response);
+        }
+        catch
+        {
+            return BadRequest(
+                new { Errors = new List<string> { "Error getting verification request." } }
+            );
         }
     }
 
@@ -138,7 +268,9 @@ public class DoctorController : ControllerBase
             Description = request.Description,
             Status = RequestStatus.Pending,
             RequestedAtUtc = nowUtc,
+            SessionPrice = request.SessionPrice,
         };
+
         try
         {
             await _dbContext.DoctorsVerificationRequests.AddAsync(verificationRequest);
@@ -156,13 +288,11 @@ public class DoctorController : ControllerBase
                 }
             );
         }
-
-        try
+        using (var readLock = await _lockingManager.EnterReadAsync(verificationRequest.Id))
         {
-            var savedAttachments = new List<DoctorVerificationRequestAttachment>();
-
-            foreach (var file in request.Attachments)
+            try
             {
+                var savedAttachments = new List<DoctorVerificationRequestAttachment>();
                 var uploadsFolder = Path.Combine(
                     "Uploads",
                     "DoctorsVerificationRequests",
@@ -170,54 +300,73 @@ public class DoctorController : ControllerBase
                     verificationRequest.Id.ToString()
                 );
                 Directory.CreateDirectory(uploadsFolder);
-                var attachmentId = Guid.NewGuid();
-                var uniqueFileName = $"{attachmentId}_{Path.GetFileName(file.FileName)}";
-                var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                Console.WriteLine($"file name: {file.FileName}");
-                Console.WriteLine($"file size: {file.Length} bytes");
-
-                using (var stream = new FileStream(fullPath, FileMode.Create))
+                foreach (var file in request.Attachments)
                 {
-                    await file.CopyToAsync(stream);
+                    var attachmentId = Guid.NewGuid();
+                    var uniqueFileName = $"{attachmentId}_{Path.GetFileName(file.FileName)}";
+                    var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    Console.WriteLine($"file name: {file.FileName}");
+                    Console.WriteLine($"file size: {file.Length} bytes");
+
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    savedAttachments.Add(
+                        new DoctorVerificationRequestAttachment
+                        {
+                            Id = attachmentId,
+                            DoctorVerificationRequestId = verificationRequest.Id,
+                            UploadedAtUtc = nowUtc,
+                            FileName = file.FileName,
+                            FilePath = fullPath,
+                            ContentType = file.ContentType,
+                            FileSize = file.Length,
+                        }
+                    );
                 }
 
-                savedAttachments.Add(
-                    new DoctorVerificationRequestAttachment
+                await _dbContext.DoctorsVerificationRequestsAttachments.AddRangeAsync(
+                    savedAttachments
+                );
+                await _dbContext.SaveChangesAsync();
+                return Ok(
+                    new SendVerificationRequestResponseDto
                     {
-                        Id = attachmentId,
-                        DoctorVerificationRequestId = verificationRequest.Id,
-                        UploadedAtUtc = nowUtc,
-                        FileName = file.FileName,
-                        FilePath = fullPath,
-                        ContentType = file.ContentType,
-                        FileSize = file.Length,
+                        VerificationRequestId = verificationRequest.Id,
                     }
                 );
             }
-
-            await _dbContext.DoctorsVerificationRequestsAttachments.AddRangeAsync(savedAttachments);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { Message = "Verification request sent successfully." });
-        }
-        catch
-        {
-            try
+            catch
             {
-                _dbContext.DoctorsVerificationRequests.Remove(verificationRequest);
+                try
+                {
+                    _dbContext.DoctorsVerificationRequests.Remove(verificationRequest);
 
-                await _dbContext.SaveChangesAsync();
-                //clean up the uploads and in db
-                var uploadsFolder = Path.Combine(
-                    "Uploads",
-                    "DoctorsVerificationRequests",
-                    doctorId.ToString(),
-                    verificationRequest.Id.ToString()
-                );
-                Directory.Delete(uploadsFolder, true);
-            }
-            catch (System.Exception)
-            {
+                    await _dbContext.SaveChangesAsync();
+                    //clean up the uploads and in db
+                    var uploadsFolder = Path.Combine(
+                        "Uploads",
+                        "DoctorsVerificationRequests",
+                        doctorId.ToString(),
+                        verificationRequest.Id.ToString()
+                    );
+                    Directory.Delete(uploadsFolder, true);
+                }
+                catch (System.Exception)
+                {
+                    return BadRequest(
+                        new
+                        {
+                            Errors = new List<string>
+                            {
+                                "An error occurred while saving the attachments.",
+                            },
+                        }
+                    );
+                }
                 return BadRequest(
                     new
                     {
@@ -228,18 +377,12 @@ public class DoctorController : ControllerBase
                     }
                 );
             }
-            return BadRequest(
-                new
-                {
-                    Errors = new List<string> { "An error occurred while saving the attachments." },
-                }
-            );
         }
     }
 
     [HttpDelete("delete-doctor-verification-request")]
     public async Task<ActionResult<DoctorProfileResponseDto>> DeleteDoctorVerificationRequest(
-        [FromBody] DeleteDoctorVerificationRequestRequestDto request
+        [FromQuery] DeleteDoctorVerificationRequestRequestDto request
     )
     {
         var doctorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
@@ -291,16 +434,4 @@ public class DoctorController : ControllerBase
             );
         }
     }
-}
-
-public class DeleteDoctorVerificationRequestRequestDto
-{
-    public int RequestId { get; set; }
-}
-
-public class SendVerificationRequestRequestDto
-{
-    public DoctorTitle Title { get; set; }
-    public string Description { get; set; }
-    public List<IFormFile> Attachments { get; set; } = [];
 }

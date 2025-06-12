@@ -18,11 +18,11 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
 );
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-builder.Services.AddHostedService<AIAudioResponsesCleanupService>();
-builder.Services.AddHostedService<CleanDbBackgroundService>();
+builder.Services.AddBackgroundServices();
 
 builder.Services.AddCustomCors(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
 builder.Services.AddSingletonServices();
 
 builder.Services.AddScopedServices();
@@ -49,6 +49,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCustomCors();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseAuthorization();
 

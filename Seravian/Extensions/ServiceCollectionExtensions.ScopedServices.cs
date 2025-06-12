@@ -10,6 +10,16 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<DeepFaceService>();
         services.AddSingleton<TTSService>();
         services.AddSingleton<IAIResponseTrackerService, AIResponseTrackerService>();
+        services.AddSingleton<DoctorsVerificationRequestsAttachmentFilesAccessLockingManager>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddBackgroundServices(this IServiceCollection services)
+    {
+        services.AddHostedService<AIAudioResponsesCleanupService>();
+        services.AddHostedService<CleanDbBackgroundService>();
+        services.AddHostedService<ExpiredSessionBookingRejectionService>();
 
         return services;
     }

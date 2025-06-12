@@ -11,6 +11,8 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
         // Primary Key
         builder.HasKey(c => c.Id);
 
+        builder.Property(x => x.CreatedAtUtc).HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
         // Required relationship with Patient
         builder
             .HasOne(c => c.Patient)

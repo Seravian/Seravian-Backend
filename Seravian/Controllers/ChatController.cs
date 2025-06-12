@@ -138,7 +138,7 @@ public partial class ChatController : ControllerBase
     }
 
     [HttpDelete("delete")]
-    public async Task<IActionResult> DeleteChatAsync(DeleteChatRequestDto request)
+    public async Task<IActionResult> DeleteChatAsync([FromQuery] DeleteChatRequestDto request)
     {
         #region validation
         if (request.Id == null || request.Id == Guid.Empty)

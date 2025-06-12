@@ -13,6 +13,10 @@ class DoctorConfigurations : IEntityTypeConfiguration<Doctor>
             .IsUnicode(true);
         builder.Property(d => d.Title).HasConversion<int?>();
 
+        builder
+            .Property(x => x.VerifiedAtUtc)
+            .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
+
         builder.HasOne(x => x.User).WithOne().HasForeignKey<Doctor>(d => d.UserId);
 
         builder
@@ -20,5 +24,11 @@ class DoctorConfigurations : IEntityTypeConfiguration<Doctor>
             .WithOne(vr => vr.Doctor)
             .HasForeignKey(vr => vr.DoctorId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder
+            .HasMany(d => d.SessionBookings)
+            .WithOne(sb => sb.Doctor)
+            .HasForeignKey(sb => sb.DoctorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

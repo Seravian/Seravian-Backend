@@ -166,6 +166,12 @@ namespace Seravian.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("ProfileImagePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SessionPrice")
+                        .HasColumnType("int");
+
                     b.Property<int?>("Title")
                         .HasColumnType("int");
 
@@ -216,6 +222,9 @@ namespace Seravian.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<int>("SessionPrice")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -335,6 +344,62 @@ namespace Seravian.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("SessionBooking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DoctorNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("PatientIsAvailableFromUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PatientIsAvailableToUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PatientNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("ScheduledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SessionPrice")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("SessionBookings");
                 });
 
             modelBuilder.Entity("User", b =>
@@ -519,6 +584,25 @@ namespace Seravian.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SessionBooking", b =>
+                {
+                    b.HasOne("Doctor", "Doctor")
+                        .WithMany("SessionBookings")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Patient", "Patient")
+                        .WithMany("SessionBookings")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("Chat", b =>
                 {
                     b.Navigation("ChatMessages");
@@ -534,6 +618,8 @@ namespace Seravian.Migrations
             modelBuilder.Entity("Doctor", b =>
                 {
                     b.Navigation("DoctorVerificationRequests");
+
+                    b.Navigation("SessionBookings");
                 });
 
             modelBuilder.Entity("DoctorVerificationRequest", b =>
@@ -544,6 +630,8 @@ namespace Seravian.Migrations
             modelBuilder.Entity("Patient", b =>
                 {
                     b.Navigation("Chats");
+
+                    b.Navigation("SessionBookings");
                 });
 
             modelBuilder.Entity("User", b =>

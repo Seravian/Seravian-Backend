@@ -20,6 +20,18 @@ class DoctorVerificationRequestConfigurations : IEntityTypeConfiguration<DoctorV
             .IsRequired();
 
         builder
+            .Property(x => x.RequestedAtUtc)
+            .HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
+        builder
+            .Property(x => x.DeletedAtUtc)
+            .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
+
+        builder
+            .Property(x => x.ReviewedAtUtc)
+            .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
+
+        builder
             .HasMany(e => e.Attachments)
             .WithOne(a => a.DoctorVerificationRequest)
             .HasForeignKey(a => a.DoctorVerificationRequestId)

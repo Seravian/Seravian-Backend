@@ -8,6 +8,7 @@ public class ChatProcessingManager
     public async Task<bool> TryLock(Guid chatId)
     {
         var sem = _locks.GetOrAdd(chatId, _ => new SemaphoreSlim(1, 1));
+
         return await sem.WaitAsync(0); // no wait — instant lock check
     }
 
