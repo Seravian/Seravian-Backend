@@ -902,7 +902,7 @@ public partial class ChatController : ControllerBase
                                         .ToList(),
                                     FailureReason = diagnosis.FailureReason,
                                     RequestedAtUtc = diagnosis.RequestedAtUtc,
-                                    CompletedAtUtc = diagnosis.CompletedAtUtc,
+                                    CompletedAtUtc = diagnosis.CompletedAtUtc!.Value,
                                 }
                             );
                     }
