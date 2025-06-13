@@ -896,8 +896,16 @@ public partial class ChatController : ControllerBase
                             .NotifyChatDiagnosisReadyAsync(
                                 new NotifyChatDiagnosisReadyDto
                                 {
-                                    ChatId = diagnosis.ChatId,
-                                    ChatDiagnosisId = diagnosis.Id,
+                                    Id = diagnosis.Id,
+                                    DiagnosedProblem = diagnosis.DiagnosedProblem,
+                                    Reasoning = diagnosis.Reasoning,
+                                    Prescriptions = diagnosis
+                                        .Prescriptions.OrderBy(p => p.OrderIndex)
+                                        .Select(p => p.Content)
+                                        .ToList(),
+                                    FailureReason = diagnosis.FailureReason,
+                                    RequestedAtUtc = diagnosis.RequestedAtUtc,
+                                    CompletedAtUtc = diagnosis.CompletedAtUtc,
                                 }
                             );
                     }
