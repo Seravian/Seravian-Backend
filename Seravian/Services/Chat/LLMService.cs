@@ -6,14 +6,16 @@ namespace TestAIModels;
 
 public class LLMService
 {
-    private readonly string _apiUrl;
+    private readonly string _apiGenerateDiagnosisUrl;
+    private readonly string _apiGenerateResponseUrl;
     private readonly string _apiKey;
     private readonly string _apiKeyHeader;
 
     public LLMService(IOptionsMonitor<LLMSettings> llmOptions)
     {
         _apiKeyHeader = llmOptions.CurrentValue.ApiKeyHeader;
-        _apiUrl = llmOptions.CurrentValue.ApiUrl;
+        _apiGenerateDiagnosisUrl = llmOptions.CurrentValue.GenerateDiagnosisUrl;
+        _apiGenerateResponseUrl = llmOptions.CurrentValue.GenerateResponseUrl;
         _apiKey = llmOptions.CurrentValue.ApiKey;
     }
 
@@ -39,7 +41,7 @@ public class LLMService
             Console.WriteLine($"Sending message: {jsonPayload}");
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PostAsync(_apiUrl, content);
+            var response = await httpClient.PostAsync(_apiGenerateResponseUrl, content);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();

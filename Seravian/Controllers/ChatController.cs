@@ -665,9 +665,11 @@ public partial class ChatController : ControllerBase
         {
             var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            var chat = await _dbContext
-                .ChatDiagnoses.Include(c => c.Chat)
-                .AsNoTracking()
+            var chatDiagnosis = await _dbContext
+                .ChatDiagnoses.AsNoTracking()
+                .AsSplitQuery()
+                .Include(c => c.Chat)
+                .Include(c => c.Prescriptions)
                 .FirstOrDefaultAsync(c =>
                     c.Id == request.ChatDiagnosisId
                     && c.Chat.PatientId == patientId
@@ -675,7 +677,7 @@ public partial class ChatController : ControllerBase
                     && !c.Chat.IsDeleted
                 );
 
-            if (chat is null)
+            if (chatDiagnosis is null)
             {
                 return BadRequest(new { Errors = new List<string> { "Chat not found." } });
             }
@@ -683,10 +685,16 @@ public partial class ChatController : ControllerBase
             return Ok(
                 new GetChatDiagnosisDetailsResponseDto
                 {
-                    Id = chat.Id,
-                    Description = chat.Description,
-                    RequestedAtUtc = chat.RequestedAtUtc,
-                    CompletedAtUtc = chat.CompletedAtUtc,
+                    Id = chatDiagnosis.Id,
+                    DiagnosedProblem = chatDiagnosis.DiagnosedProblem,
+                    Reasoning = chatDiagnosis.Reasoning,
+                    Prescriptions = chatDiagnosis
+                        .Prescriptions.OrderBy(p => p.OrderIndex)
+                        .Select(p => p.Content)
+                        .ToList(),
+                    FailureReason = chatDiagnosis.FailureReason,
+                    RequestedAtUtc = chatDiagnosis.RequestedAtUtc,
+                    CompletedAtUtc = chatDiagnosis.CompletedAtUtc,
                 }
             );
         }
@@ -717,6 +725,8 @@ public partial class ChatController : ControllerBase
                 .Select(c => new GetChatDiagnosisResponseDto
                 {
                     Id = c.Id,
+                    DiagnosedProblem = c.DiagnosedProblem,
+                    FailureReason = c.FailureReason,
                     RequestedAtUtc = c.RequestedAtUtc,
                     CompletedAtUtc = c.CompletedAtUtc,
                 })
@@ -801,7 +811,6 @@ public partial class ChatController : ControllerBase
             var chatDiagnosis = new ChatDiagnosis
             {
                 ChatId = request.ChatId,
-                Description = null,
                 RequestedAtUtc = utcNow,
                 CompletedAtUtc = null,
                 StartMessageId = chat
@@ -832,9 +841,52 @@ public partial class ChatController : ControllerBase
                             throw new Exception("Diagnosis not found.");
                         }
 
-                        // fake description
-                        diagnosis.Description =
-                            $"fake description for testing with a random number: {Random.Shared.Next()}";
+                        #region  set fake diagnosis data
+                        bool isDiagnosisSucceeded = Random.Shared.Next(0, 2) == 0 ? true : false;
+                        var randomNumber = Random.Shared.Next();
+                        if (isDiagnosisSucceeded)
+                        {
+                            diagnosis.DiagnosedProblem =
+                                $"fake diagnosed problem for testing with a random number: {randomNumber}";
+                            diagnosis.Reasoning =
+                                $"fake reasoning for testing with a random number: {randomNumber}";
+
+                            diagnosis.Prescriptions =
+                            [
+                                new ChatDiagnosisPrescription
+                                {
+                                    Content =
+                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 1",
+                                    OrderIndex = 1,
+                                },
+                                new ChatDiagnosisPrescription
+                                {
+                                    Content =
+                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 2",
+                                    OrderIndex = 2,
+                                },
+                                new ChatDiagnosisPrescription
+                                {
+                                    Content =
+                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 3",
+                                    OrderIndex = 3,
+                                },
+                                new ChatDiagnosisPrescription
+                                {
+                                    Content =
+                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()}",
+                                    OrderIndex = 4,
+                                },
+                            ];
+                        }
+                        else
+                        {
+                            diagnosis.FailureReason =
+                                $"fake failure reason for testing with a random number: {Random.Shared.Next()}";
+                        }
+
+                        #endregion
+
                         diagnosis.CompletedAtUtc = DateTime.UtcNow;
 
                         await dbContext.SaveChangesAsync();
@@ -916,6 +968,7 @@ public partial class ChatController : ControllerBase
             .FirstOrDefaultAsync(x =>
                 x.PatientId == patientId && x.Id == request.ChatId && !x.IsDeleted
             );
+
         if (chat is null)
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
