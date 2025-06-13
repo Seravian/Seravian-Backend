@@ -7,7 +7,7 @@ public class NotifyChatDiagnosisReadyDto
     public string? FailureReason { get; set; }
     public string? DiagnosedProblem { get; set; }
     public string? Reasoning { get; set; }
-    public List<string>? Prescriptions { get; set; }
+    public List<string> Prescriptions { get; set; } = [];
 
     public DateTime RequestedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
