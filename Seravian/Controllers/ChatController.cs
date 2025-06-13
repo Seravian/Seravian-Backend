@@ -876,7 +876,7 @@ public partial class ChatController : ControllerBase
             _llmDiagnosesLocksManager.Release(request.ChatId);
             _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
 
-            return BadRequest("");
+            return BadRequest();
         }
     }
 
@@ -902,7 +902,7 @@ public partial class ChatController : ControllerBase
 
         diagnosis.IsDeleted = true;
         await _dbContext.SaveChangesAsync();
-        return Ok("Diagnosis deleted.");
+        return Ok();
     }
 
     [HttpDelete("delete-completed-chat-diagnoses")]
@@ -929,6 +929,6 @@ public partial class ChatController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync();
-        return Ok("Completed Diagnoses deleted.");
+        return Ok();
     }
 }
