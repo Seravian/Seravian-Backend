@@ -1,6 +1,6 @@
 namespace Seravian.DTOs.Chat;
 
-public class DeleteCompletedDiagnosisRequestDto
+public class DeleteCompletedChatDiagnosisRequestDto
 {
     public long ChatDiagnosisId { get; set; }
 }

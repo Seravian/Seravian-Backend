@@ -777,6 +777,7 @@ public partial class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "No patient messages found." } });
         }
+
         if (chat.ChatDiagnoses.Any(c => c.CompletedAtUtc == null))
         {
             return BadRequest(
@@ -879,9 +880,9 @@ public partial class ChatController : ControllerBase
         }
     }
 
-    [HttpDelete("delete-completed-diagnosis")]
-    public async Task<IActionResult> DeleteDiagnosisAsync(
-        [FromQuery] DeleteCompletedDiagnosisRequestDto request
+    [HttpDelete("delete-completed-chat-diagnosis")]
+    public async Task<IActionResult> DeleteCompletedChatDiagnosisAsync(
+        [FromQuery] DeleteCompletedChatDiagnosisRequestDto request
     )
     {
         var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
@@ -904,9 +905,9 @@ public partial class ChatController : ControllerBase
         return Ok("Diagnosis deleted.");
     }
 
-    [HttpDelete("delete-completed-diagnoses")]
-    public async Task<IActionResult> DeleteCompletedDiagnosesAsync(
-        [FromQuery] DeleteCompletedDiagnosesRequestDto request
+    [HttpDelete("delete-completed-chat-diagnoses")]
+    public async Task<IActionResult> DeleteCompletedChatDiagnosesAsync(
+        [FromQuery] DeleteCompletedChatDiagnosesRequestDto request
     )
     {
         var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
