@@ -11,7 +11,7 @@ public class ChatDiagnosis
 
     public long StartMessageId { get; set; }
     public long ToMessageId { get; set; }
-
+    public bool IsDeleted { get; set; }
     public virtual Chat Chat { get; set; }
 
     public virtual ChatMessage StartMessage { get; set; }

@@ -669,7 +669,10 @@ public partial class ChatController : ControllerBase
                 .ChatDiagnoses.Include(c => c.Chat)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c =>
-                    c.Id == request.ChatDiagnosisId && c.Chat.PatientId == patientId
+                    c.Id == request.ChatDiagnosisId
+                    && c.Chat.PatientId == patientId
+                    && !c.IsDeleted
+                    && !c.Chat.IsDeleted
                 );
 
             if (chat is null)
@@ -705,7 +708,12 @@ public partial class ChatController : ControllerBase
             var chatDiagnoses = await _dbContext
                 .ChatDiagnoses.Include(c => c.Chat)
                 .AsNoTracking()
-                .Where(c => c.Chat.PatientId == patientId && request.ChatId == c.ChatId)
+                .Where(c =>
+                    c.Chat.PatientId == patientId
+                    && request.ChatId == c.ChatId
+                    && !c.IsDeleted
+                    && !c.Chat.IsDeleted
+                )
                 .Select(c => new GetChatDiagnosisResponseDto
                 {
                     Id = c.Id,
@@ -764,7 +772,8 @@ public partial class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
         }
-        if (chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Count() < 1)
+
+        if (!chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Any())
         {
             return BadRequest(new { Errors = new List<string> { "No patient messages found." } });
         }
@@ -794,8 +803,10 @@ public partial class ChatController : ControllerBase
                 Description = null,
                 RequestedAtUtc = utcNow,
                 CompletedAtUtc = null,
-                StartMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Min(m => m.Id),
-                ToMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Max(m => m.Id),
+                StartMessageId = chat
+                    .ChatMessages.Where(m => !m.IsDeleted && !m.IsAI)
+                    .Min(m => m.Id),
+                ToMessageId = chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Max(m => m.Id),
             };
 
             await _dbContext.ChatDiagnoses.AddAsync(chatDiagnosis);
@@ -863,7 +874,60 @@ public partial class ChatController : ControllerBase
         {
             _llmDiagnosesLocksManager.Release(request.ChatId);
             _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
+
             return BadRequest("");
         }
+    }
+
+    [HttpDelete("delete-completed-diagnosis")]
+    public async Task<IActionResult> DeleteDiagnosisAsync(
+        [FromQuery] DeleteCompletedDiagnosisRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var diagnosis = await _dbContext
+            .ChatDiagnoses.Include(x => x.Chat)
+            .FirstOrDefaultAsync(x =>
+                x.Id == request.ChatDiagnosisId
+                && x.Chat.PatientId == patientId
+                && x.CompletedAtUtc != null
+                && !x.IsDeleted
+            );
+
+        if (diagnosis is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Diagnosis not found." } });
+        }
+
+        diagnosis.IsDeleted = true;
+        await _dbContext.SaveChangesAsync();
+        return Ok("Diagnosis deleted.");
+    }
+
+    [HttpDelete("delete-completed-diagnoses")]
+    public async Task<IActionResult> DeleteCompletedDiagnosesAsync(
+        [FromQuery] DeleteCompletedDiagnosesRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var chat = await _dbContext
+            .Chats.Include(x => x.ChatDiagnoses)
+            .FirstOrDefaultAsync(x =>
+                x.PatientId == patientId && x.Id == request.ChatId && !x.IsDeleted
+            );
+        if (chat is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+        // mark all completed and not deleted diagnoses as deleted
+        foreach (
+            var diagnosis in chat.ChatDiagnoses.Where(x => x.CompletedAtUtc != null && !x.IsDeleted)
+        )
+        {
+            diagnosis.IsDeleted = true;
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok("Completed Diagnoses deleted.");
     }
 }
