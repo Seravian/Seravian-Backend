@@ -10,5 +10,5 @@ public class NotifyChatDiagnosisReadyDto
     public List<string> Prescriptions { get; set; } = [];
 
     public DateTime RequestedAtUtc { get; set; }
-    public DateTime? CompletedAtUtc { get; set; }
+    public DateTime CompletedAtUtc { get; set; }
 }
