@@ -254,13 +254,37 @@ namespace Seravian.Migrations
                     b.ToTable("Doctors");
                 });
 
+            modelBuilder.Entity("DoctorLanguage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("DoctorVerificationRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorVerificationRequestId", "LanguageCode")
+                        .IsUnique();
+
+                    b.ToTable("DoctorLanguages");
+                });
+
             modelBuilder.Entity("DoctorVerificationRequest", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("datetime2");
@@ -271,10 +295,18 @@ namespace Seravian.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("DoctorAttachmentsNote")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("DoctorId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("RejectionNotes")
+                    b.Property<string>("Nationality")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
+
+                    b.Property<string>("RejectionNote")
                         .HasMaxLength(2000)
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(2000)");
@@ -299,6 +331,11 @@ namespace Seravian.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("Title")
                         .HasColumnType("int");
@@ -329,8 +366,8 @@ namespace Seravian.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("DoctorVerificationRequestId")
-                        .HasColumnType("int");
+                    b.Property<long>("DoctorVerificationRequestId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -528,6 +565,33 @@ namespace Seravian.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("WorkingHoursTimeSlot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<long>("DoctorVerificationRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<TimeSpan>("From")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan>("To")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorVerificationRequestId", "DayOfWeek", "From", "To");
+
+                    b.ToTable("WorkingHoursTimeSlots");
+                });
+
             modelBuilder.Entity("Admin", b =>
                 {
                     b.HasOne("User", "User")
@@ -632,6 +696,17 @@ namespace Seravian.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DoctorLanguage", b =>
+                {
+                    b.HasOne("DoctorVerificationRequest", "DoctorVerificationRequest")
+                        .WithMany("Languages")
+                        .HasForeignKey("DoctorVerificationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DoctorVerificationRequest");
+                });
+
             modelBuilder.Entity("DoctorVerificationRequest", b =>
                 {
                     b.HasOne("Doctor", "Doctor")
@@ -712,6 +787,17 @@ namespace Seravian.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("WorkingHoursTimeSlot", b =>
+                {
+                    b.HasOne("DoctorVerificationRequest", "DoctorVerificationRequest")
+                        .WithMany("WorkingHours")
+                        .HasForeignKey("DoctorVerificationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DoctorVerificationRequest");
+                });
+
             modelBuilder.Entity("Chat", b =>
                 {
                     b.Navigation("ChatDiagnoses");
@@ -741,6 +827,10 @@ namespace Seravian.Migrations
             modelBuilder.Entity("DoctorVerificationRequest", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("Languages");
+
+                    b.Navigation("WorkingHours");
                 });
 
             modelBuilder.Entity("Patient", b =>

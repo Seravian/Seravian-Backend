@@ -3,15 +3,15 @@ using Nito.AsyncEx;
 
 public class DoctorsVerificationRequestsAttachmentFilesAccessLockingManager
 {
-    private readonly ConcurrentDictionary<int, AsyncReaderWriterLock> _locks = [];
+    private readonly ConcurrentDictionary<long, AsyncReaderWriterLock> _locks = [];
 
-    public async Task<IDisposable> EnterReadAsync(int requestId)
+    public async Task<IDisposable> EnterReadAsync(long requestId)
     {
         var rwLock = _locks.GetOrAdd(requestId, _ => new AsyncReaderWriterLock());
         return await rwLock.ReaderLockAsync();
     }
 
-    public async Task<IDisposable> EnterWriteAsync(int requestId)
+    public async Task<IDisposable> EnterWriteAsync(long requestId)
     {
         var rwLock = _locks.GetOrAdd(requestId, _ => new AsyncReaderWriterLock());
         return await rwLock.WriterLockAsync();

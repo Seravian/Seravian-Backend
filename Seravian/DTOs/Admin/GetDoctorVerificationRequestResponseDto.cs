@@ -2,7 +2,7 @@ namespace Seravian.DTOs.Admin;
 
 public class GetDoctorVerificationRequestResponseDto
 {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public Guid DoctorId { get; set; }
     public string DoctorFullName { get; set; }
     public string DoctorEmail { get; set; }

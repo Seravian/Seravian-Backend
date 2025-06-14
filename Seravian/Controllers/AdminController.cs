@@ -79,7 +79,7 @@ public class AdminController : ControllerBase
                         })
                         .OrderBy(a => a.FileName)
                         .ToList(),
-                    RejectionNotes = x.RejectionNotes,
+                    RejectionNotes = x.RejectionNote,
                     ReviewerId = x.ReviewerId,
                 })
                 .OrderByDescending(x => x.RequestedAtUtc)
@@ -144,7 +144,7 @@ public class AdminController : ControllerBase
                     })
                     .OrderBy(a => a.FileName)
                     .ToList(),
-                RejectionNotes = verificationRequest.RejectionNotes,
+                RejectionNotes = verificationRequest.RejectionNote,
                 ReviewerId = verificationRequest.ReviewerId,
             };
 
@@ -215,7 +215,7 @@ public class AdminController : ControllerBase
             else
             {
                 verificationRequest.Status = RequestStatus.Rejected;
-                verificationRequest.RejectionNotes = request.RejectionNotes;
+                verificationRequest.RejectionNote = request.RejectionNotes;
             }
             await _dbContext.SaveChangesAsync();
 

@@ -7,11 +7,14 @@ class DoctorVerificationRequestConfigurations : IEntityTypeConfiguration<DoctorV
     public void Configure(EntityTypeBuilder<DoctorVerificationRequest> builder)
     {
         builder.HasKey(e => e.Id);
+
+        builder.Property(cm => cm.Id).HasColumnType("bigint").ValueGeneratedOnAdd();
+
         builder.Property(e => e.Title).HasConversion<int>().IsRequired();
         builder.Property(e => e.Status).HasConversion<int>().IsRequired();
         builder.Property(e => e.RequestedAtUtc).IsRequired();
 
-        builder.Property(e => e.RejectionNotes).HasMaxLength(2000).IsUnicode(true);
+        builder.Property(e => e.RejectionNote).HasMaxLength(2000).IsUnicode(true);
 
         builder
             .Property(d => d.Description)
@@ -30,6 +33,39 @@ class DoctorVerificationRequestConfigurations : IEntityTypeConfiguration<DoctorV
         builder
             .Property(x => x.ReviewedAtUtc)
             .HasConversion(UtcDateTimeConverter.NullableDateTimeConverter);
+
+        // New fields
+        builder.Property(x => x.TimeZone).IsRequired().HasMaxLength(100); // IANA TZ strings like "America/New_York"
+
+        builder.Property(x => x.Nationality).IsRequired().HasMaxLength(2); // ISO 3166-1 alpha-2
+
+        builder.Property(x => x.TimeZone).IsRequired().HasMaxLength(100); // IANA TZ strings like "America/New_York"
+
+        // New relationships
+        builder
+            .HasMany(x => x.Languages)
+            .WithOne(x => x.DoctorVerificationRequest)
+            .HasForeignKey(x => x.DoctorVerificationRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder
+            .HasMany(x => x.WorkingHours)
+            .WithOne(x => x.DoctorVerificationRequest)
+            .HasForeignKey(x => x.DoctorVerificationRequestId)
+            .OnDelete(DeleteBehavior.Cascade); // New fields
+
+        // New relationships
+        builder
+            .HasMany(x => x.Languages)
+            .WithOne(x => x.DoctorVerificationRequest)
+            .HasForeignKey(x => x.DoctorVerificationRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder
+            .HasMany(x => x.WorkingHours)
+            .WithOne(x => x.DoctorVerificationRequest)
+            .HasForeignKey(x => x.DoctorVerificationRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .HasMany(e => e.Attachments)
