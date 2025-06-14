@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Seravian.DTOs.Chat;
 using Seravian.DTOs.ChatHub;
+using Seravian.DTOs.Services.Dtos;
 using Seravian.Hubs;
 using TestAIModels;
 
@@ -337,7 +338,7 @@ public partial class ChatController : ControllerBase
         {
             try
             {
-                var response = await _llmService.SendMessageToLLMAsync(
+                var response = await _llmService.GenerateChatMessageResponseAsync(
                     request.Message,
                     message.Id,
                     request.ChatId.ToString()
@@ -562,7 +563,7 @@ public partial class ChatController : ControllerBase
                                 }
                             );
 
-                        var llmResponse = await _llmService.SendMessageToLLMAsync(
+                        var llmResponse = await _llmService.GenerateChatMessageResponseAsync(
                             formatLLMInput,
                             userChatMessage.Id,
                             chatId.ToString()
@@ -825,69 +826,80 @@ public partial class ChatController : ControllerBase
                 {
                     try
                     {
-                        // get the diagnosis from the llm and save it and simulate a response
-                        await Task.Delay(TimeSpan.FromSeconds(20));
-
+                        // get the diagnosis from the llm service
                         using var dbContext = _dbContextFactory.CreateDbContext();
+                        var messagesEntries = await dbContext
+                            .ChatsMessages.Where(m =>
+                                !m.IsDeleted && m.ChatId == chatDiagnosis.ChatId
+                            )
+                            .OrderBy(m => m.Id)
+                            .Select(m => new GenerateChatDiagnosisMessageEntry
+                            {
+                                Content = m.Content ?? "",
+                                IsAi = m.IsAI,
+                            })
+                            .ToListAsync();
+
+                        var response = await _llmService.GenerateChatDiagnosisAsync(
+                            chatDiagnosis.ChatId,
+                            chatDiagnosis.Id,
+                            messagesEntries
+                        );
+
+                        if (response is null)
+                        {
+                            throw new Exception("Response is null.");
+                        }
 
                         var diagnosis = await dbContext.ChatDiagnoses.FirstOrDefaultAsync(c =>
                             c.Id == chatDiagnosis.Id
                         );
+
                         if (diagnosis is null)
                         {
                             throw new Exception("Diagnosis not found.");
                         }
 
-                        #region  set fake diagnosis data
-                        bool isDiagnosisSucceeded = Random.Shared.Next(0, 2) == 0 ? true : false;
-                        var randomNumber = Random.Shared.Next();
-                        if (isDiagnosisSucceeded)
-                        {
-                            diagnosis.DiagnosedProblem =
-                                $"fake diagnosed problem for testing with a random number: {randomNumber}";
-                            diagnosis.Reasoning =
-                                $"fake reasoning for testing with a random number: {randomNumber}";
+                        #region  set  diagnosis data
 
-                            diagnosis.Prescriptions =
-                            [
-                                new ChatDiagnosisPrescription
-                                {
-                                    Content =
-                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 1",
-                                    OrderIndex = 1,
-                                },
-                                new ChatDiagnosisPrescription
-                                {
-                                    Content =
-                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 2",
-                                    OrderIndex = 2,
-                                },
-                                new ChatDiagnosisPrescription
-                                {
-                                    Content =
-                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()} 3",
-                                    OrderIndex = 3,
-                                },
-                                new ChatDiagnosisPrescription
-                                {
-                                    Content =
-                                        $"fake prescription content for testing with a random number: {Random.Shared.Next()}",
-                                    OrderIndex = 4,
-                                },
-                            ];
+                        if (response.IsSucceeded)
+                        {
+                            diagnosis.DiagnosedProblem = response.DiagnosedProblem;
+                            diagnosis.Reasoning = response.Reasoning;
+                            diagnosis.FailureReason = null;
+
+                            if (response.Prescription is null || !response.Prescription.Any())
+                            {
+                                throw new Exception("Prescription is null or empty.");
+                            }
+                            diagnosis.Prescriptions = response
+                                .Prescription.Select(
+                                    (p, i) =>
+                                        new ChatDiagnosisPrescription
+                                        {
+                                            Content = p,
+                                            OrderIndex = i + 1,
+                                        }
+                                )
+                                .ToList();
                         }
                         else
                         {
-                            diagnosis.FailureReason =
-                                $"fake failure reason for testing with a random number: {Random.Shared.Next()}";
-                        }
+                            if (response.FailureReason is null)
+                            {
+                                throw new Exception("Failure reason is null.");
+                            }
 
-                        #endregion
+                            diagnosis.DiagnosedProblem = null;
+                            diagnosis.Reasoning = null;
+                            diagnosis.FailureReason = response.FailureReason;
+                        }
 
                         diagnosis.CompletedAtUtc = DateTime.UtcNow;
 
                         await dbContext.SaveChangesAsync();
 
+                        #endregion
                         await _hubContext
                             .Clients.Group(diagnosis.ChatId.ToString())
                             .NotifyChatDiagnosisReadyAsync(

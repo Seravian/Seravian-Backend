@@ -141,7 +141,7 @@ public class ChatHub : Hub<IChatHubClient>
         {
             try
             {
-                var response = await _llmService.SendMessageToLLMAsync(
+                var response = await _llmService.GenerateChatMessageResponseAsync(
                     request.Message,
                     message.Id,
                     chatId.ToString()
