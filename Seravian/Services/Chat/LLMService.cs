@@ -7,16 +7,20 @@ namespace TestAIModels;
 
 public class LLMService
 {
-    private readonly string _apiGenerateDiagnosisUrl;
-    private readonly string _apiGenerateResponseUrl;
+    private readonly string _generateResponseEndpointName;
+    private readonly string _generateDiagnosisEndpointName;
+    private readonly string _mentalLLaMA7BBaseUrl;
+    private readonly string _mentalLLaMA13BBaseUrl;
     private readonly string _apiKey;
     private readonly string _apiKeyHeader;
 
     public LLMService(IOptionsMonitor<LLMSettings> llmOptions)
     {
         _apiKeyHeader = llmOptions.CurrentValue.ApiKeyHeader;
-        _apiGenerateDiagnosisUrl = llmOptions.CurrentValue.GenerateDiagnosisUrl;
-        _apiGenerateResponseUrl = llmOptions.CurrentValue.GenerateResponseUrl;
+        _mentalLLaMA7BBaseUrl = llmOptions.CurrentValue.MentalLLaMA7BBaseUrl;
+        _mentalLLaMA13BBaseUrl = llmOptions.CurrentValue.MentalLLaMA13BBaseUrl;
+        _generateResponseEndpointName = llmOptions.CurrentValue.GenerateResponseEndpointName;
+        _generateDiagnosisEndpointName = llmOptions.CurrentValue.GenerateDiagnosisEndpointName;
         _apiKey = llmOptions.CurrentValue.ApiKey;
     }
 
@@ -46,7 +50,10 @@ public class LLMService
             Console.WriteLine($"Sending message: {jsonPayload}");
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PostAsync(_apiGenerateResponseUrl, content);
+            var response = await httpClient.PostAsync(
+                _mentalLLaMA7BBaseUrl + _generateResponseEndpointName,
+                content
+            );
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -93,7 +100,10 @@ public class LLMService
         Console.WriteLine($"Sending generate diagnosis : {jsonPayload}");
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        var response = await httpClient.PostAsync(_apiGenerateDiagnosisUrl, content);
+        var response = await httpClient.PostAsync(
+            _mentalLLaMA13BBaseUrl + _generateDiagnosisEndpointName,
+            content
+        );
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
