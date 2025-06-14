@@ -83,6 +83,16 @@ public class LLMService
         List<GenerateChatDiagnosisMessageEntry> messages
     )
     {
+        var fallbackResponse = new GenerateChatDiagnosisChatDiagnosisResponseDto
+        {
+            ChatId = chatId,
+            DiagnosisMessagePrompt = null,
+            DiagnosedProblem = null,
+            Reasoning = null,
+            Prescription = [],
+            IsSucceeded = false,
+            FailureReason = "AI Diagnosis failed to generate due to unknown error.",
+        };
         var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromMinutes(20);
         httpClient.DefaultRequestHeaders.Add(_apiKeyHeader, _apiKey);
@@ -109,9 +119,10 @@ public class LLMService
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"API Error ({(int)response.StatusCode}): {jsonResponse}"
-            );
+            // throw new HttpRequestException(
+            //     $"API Error ({(int)response.StatusCode}): {jsonResponse}"
+            // );
+            return fallbackResponse;
         }
 
         GenerateChatDiagnosisChatDiagnosisResponseDto? diagnosis;
@@ -123,31 +134,47 @@ public class LLMService
             );
 
             if (diagnosis == null)
-                throw new JsonException("Deserialized response is null.");
+            {
+                // throw new JsonException("Deserialized response is null.");
+                return fallbackResponse;
+            }
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException(
-                $"Failed to deserialize API response: {ex.Message}",
-                ex
-            );
+            // throw new InvalidOperationException(
+            //     $"Failed to deserialize API response: {ex.Message}",
+            //     ex
+            // );
+            return fallbackResponse;
         }
 
         // ---- VALIDATION SECTION ----
         if (diagnosis.IsSucceeded)
         {
             if (string.IsNullOrWhiteSpace(diagnosis.DiagnosedProblem))
-                throw new InvalidOperationException(
-                    "DiagnosedProblem is null or empty despite success."
-                );
+            {
+                // throw new InvalidOperationException(
+                //     "DiagnosedProblem is null or empty despite success."
+                // );
+                return fallbackResponse;
+            }
             if (string.IsNullOrWhiteSpace(diagnosis.Reasoning))
-                throw new InvalidOperationException("Reasoning is null or empty despite success.");
+            {
+                // throw new InvalidOperationException("Reasoning is null or empty despite success.");
+                return fallbackResponse;
+            }
             if (diagnosis.Prescription == null || diagnosis.Prescription.Count == 0)
-                throw new InvalidOperationException(
-                    "Prescription is null or empty despite success."
-                );
+            {
+                // throw new InvalidOperationException(
+                //     "Prescription is null or empty despite success."
+                // );
+                return fallbackResponse;
+            }
             if (!string.IsNullOrWhiteSpace(diagnosis.FailureReason))
-                throw new InvalidOperationException("FailureReason should be null on success.");
+            {
+                // throw new InvalidOperationException("FailureReason should be null on success.");
+                return fallbackResponse;
+            }
         }
         else
         {
@@ -157,12 +184,16 @@ public class LLMService
                 || diagnosis.Prescription != null
             )
             {
-                throw new InvalidOperationException(
-                    "Diagnosis-related fields should be null on failure."
-                );
+                // throw new InvalidOperationException(
+                //     "Diagnosis-related fields should be null on failure."
+                // );
+                return fallbackResponse;
             }
             if (string.IsNullOrWhiteSpace(diagnosis.FailureReason))
-                throw new InvalidOperationException("FailureReason must be present on failure.");
+            {
+                // throw new InvalidOperationException("FailureReason must be present on failure.");
+                return fallbackResponse;
+            }
         }
 
         return diagnosis;
