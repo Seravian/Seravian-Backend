@@ -93,7 +93,7 @@ public class LLMService
         Console.WriteLine($"Sending generate diagnosis : {jsonPayload}");
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        var response = await httpClient.PostAsync(_apiGenerateResponseUrl, content);
+        var response = await httpClient.PostAsync(_apiGenerateDiagnosisUrl, content);
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
