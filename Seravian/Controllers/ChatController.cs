@@ -528,8 +528,7 @@ public partial class ChatController : ControllerBase
 
                         System.IO.File.Delete(wavPath);
 
-                        var formatLLMInput =
-                            $"Emotion: {analysisResult.DominantEmotion}. Message: {analysisResult.Transcription}";
+                        var formatLLMInput = $"{analysisResult.Transcription}";
                         var userChatMessage = new ChatMessage
                         {
                             ChatId = chatId,
