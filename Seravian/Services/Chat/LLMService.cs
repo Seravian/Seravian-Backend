@@ -51,7 +51,7 @@ public class LLMService
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             var response = await httpClient.PostAsync(
-                _mentalLLaMA7BBaseUrl + _generateResponseEndpointName,
+                _mentalLLaMA13BBaseUrl + _generateResponseEndpointName,
                 content
             );
             response.EnsureSuccessStatusCode();
