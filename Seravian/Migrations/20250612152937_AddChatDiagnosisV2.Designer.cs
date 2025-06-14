@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Seravian.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250612152937_AddChatDiagnosisV2")]
+    partial class AddChatDiagnosisV2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -71,16 +74,8 @@ namespace Seravian.Migrations
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DiagnosedProblem")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FailureReason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Reasoning")
+                    b.Property<string>("Description")
+                        .HasMaxLength(10000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("RequestedAtUtc")
@@ -101,31 +96,6 @@ namespace Seravian.Migrations
                     b.HasIndex("ToMessageId");
 
                     b.ToTable("ChatDiagnoses");
-                });
-
-            modelBuilder.Entity("ChatDiagnosisPrescription", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("ChatDiagnosisId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChatDiagnosisId");
-
-                    b.ToTable("ChatDiagnosisPrescription");
                 });
 
             modelBuilder.Entity("ChatMessage", b =>
@@ -577,17 +547,6 @@ namespace Seravian.Migrations
                     b.Navigation("ToMessage");
                 });
 
-            modelBuilder.Entity("ChatDiagnosisPrescription", b =>
-                {
-                    b.HasOne("ChatDiagnosis", "ChatDiagnosis")
-                        .WithMany("Prescriptions")
-                        .HasForeignKey("ChatDiagnosisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ChatDiagnosis");
-                });
-
             modelBuilder.Entity("ChatMessage", b =>
                 {
                     b.HasOne("Chat", "Chat")
@@ -717,11 +676,6 @@ namespace Seravian.Migrations
                     b.Navigation("ChatDiagnoses");
 
                     b.Navigation("ChatMessages");
-                });
-
-            modelBuilder.Entity("ChatDiagnosis", b =>
-                {
-                    b.Navigation("Prescriptions");
                 });
 
             modelBuilder.Entity("ChatMessage", b =>

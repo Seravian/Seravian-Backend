@@ -11,8 +11,6 @@ public class ChatDiagnosisConfiguration : IEntityTypeConfiguration<ChatDiagnosis
 
         builder.Property(cd => cd.ChatId).IsRequired();
 
-        builder.Property(cd => cd.Description).HasMaxLength(10000);
-
         builder
             .Property(cd => cd.RequestedAtUtc)
             .IsRequired()
@@ -44,5 +42,11 @@ public class ChatDiagnosisConfiguration : IEntityTypeConfiguration<ChatDiagnosis
             .WithMany() // optional: .WithMany(m => m.EndedDiagnoses)
             .HasForeignKey(cd => cd.ToMessageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder
+            .HasMany(d => d.Prescriptions)
+            .WithOne(p => p.ChatDiagnosis)
+            .HasForeignKey(p => p.ChatDiagnosisId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

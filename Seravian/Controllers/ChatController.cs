@@ -1,7 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -9,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Seravian.DTOs.Chat;
 using Seravian.DTOs.ChatHub;
+using Seravian.DTOs.Services.Dtos;
 using Seravian.Hubs;
 using TestAIModels;
 
@@ -340,7 +338,7 @@ public partial class ChatController : ControllerBase
         {
             try
             {
-                var response = await _llmService.SendMessageToLLMAsync(
+                var response = await _llmService.GenerateChatMessageResponseAsync(
                     request.Message,
                     message.Id,
                     request.ChatId.ToString()
@@ -565,7 +563,7 @@ public partial class ChatController : ControllerBase
                                 }
                             );
 
-                        var llmResponse = await _llmService.SendMessageToLLMAsync(
+                        var llmResponse = await _llmService.GenerateChatMessageResponseAsync(
                             formatLLMInput,
                             userChatMessage.Id,
                             chatId.ToString()
@@ -665,14 +663,19 @@ public partial class ChatController : ControllerBase
         {
             var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            var chat = await _dbContext
-                .ChatDiagnoses.Include(c => c.Chat)
-                .AsNoTracking()
+            var chatDiagnosis = await _dbContext
+                .ChatDiagnoses.AsNoTracking()
+                .AsSplitQuery()
+                .Include(c => c.Chat)
+                .Include(c => c.Prescriptions)
                 .FirstOrDefaultAsync(c =>
-                    c.Id == request.ChatDiagnosisId && c.Chat.PatientId == patientId
+                    c.Id == request.ChatDiagnosisId
+                    && c.Chat.PatientId == patientId
+                    && !c.IsDeleted
+                    && !c.Chat.IsDeleted
                 );
 
-            if (chat is null)
+            if (chatDiagnosis is null)
             {
                 return BadRequest(new { Errors = new List<string> { "Chat not found." } });
             }
@@ -680,10 +683,16 @@ public partial class ChatController : ControllerBase
             return Ok(
                 new GetChatDiagnosisDetailsResponseDto
                 {
-                    Id = chat.Id,
-                    Description = chat.Description,
-                    RequestedAtUtc = chat.RequestedAtUtc,
-                    CompletedAtUtc = chat.CompletedAtUtc,
+                    Id = chatDiagnosis.Id,
+                    DiagnosedProblem = chatDiagnosis.DiagnosedProblem,
+                    Reasoning = chatDiagnosis.Reasoning,
+                    Prescriptions = chatDiagnosis
+                        .Prescriptions.OrderBy(p => p.OrderIndex)
+                        .Select(p => p.Content)
+                        .ToList(),
+                    FailureReason = chatDiagnosis.FailureReason,
+                    RequestedAtUtc = chatDiagnosis.RequestedAtUtc,
+                    CompletedAtUtc = chatDiagnosis.CompletedAtUtc,
                 }
             );
         }
@@ -705,10 +714,17 @@ public partial class ChatController : ControllerBase
             var chatDiagnoses = await _dbContext
                 .ChatDiagnoses.Include(c => c.Chat)
                 .AsNoTracking()
-                .Where(c => c.Chat.PatientId == patientId && request.ChatId == c.ChatId)
+                .Where(c =>
+                    c.Chat.PatientId == patientId
+                    && request.ChatId == c.ChatId
+                    && !c.IsDeleted
+                    && !c.Chat.IsDeleted
+                )
                 .Select(c => new GetChatDiagnosisResponseDto
                 {
                     Id = c.Id,
+                    DiagnosedProblem = c.DiagnosedProblem,
+                    FailureReason = c.FailureReason,
                     RequestedAtUtc = c.RequestedAtUtc,
                     CompletedAtUtc = c.CompletedAtUtc,
                 })
@@ -764,10 +780,12 @@ public partial class ChatController : ControllerBase
         {
             return BadRequest(new { Errors = new List<string> { "Chat not found." } });
         }
-        if (chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Count() < 1)
+
+        if (!chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Any())
         {
             return BadRequest(new { Errors = new List<string> { "No patient messages found." } });
         }
+
         if (chat.ChatDiagnoses.Any(c => c.CompletedAtUtc == null))
         {
             return BadRequest(
@@ -791,11 +809,12 @@ public partial class ChatController : ControllerBase
             var chatDiagnosis = new ChatDiagnosis
             {
                 ChatId = request.ChatId,
-                Description = null,
                 RequestedAtUtc = utcNow,
                 CompletedAtUtc = null,
-                StartMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Min(m => m.Id),
-                ToMessageId = chat.ChatMessages.Where(m => !m.IsDeleted).Max(m => m.Id),
+                StartMessageId = chat
+                    .ChatMessages.Where(m => !m.IsDeleted && !m.IsAI)
+                    .Min(m => m.Id),
+                ToMessageId = chat.ChatMessages.Where(m => !m.IsDeleted && !m.IsAI).Max(m => m.Id),
             };
 
             await _dbContext.ChatDiagnoses.AddAsync(chatDiagnosis);
@@ -807,41 +826,106 @@ public partial class ChatController : ControllerBase
                 {
                     try
                     {
+                        // get the diagnosis from the llm service
                         using var dbContext = _dbContextFactory.CreateDbContext();
-                        // get the diagnosis from the llm and save it
+                        var messagesEntries = await dbContext
+                            .ChatsMessages.Where(m =>
+                                !m.IsDeleted && m.ChatId == chatDiagnosis.ChatId
+                            )
+                            .OrderBy(m => m.Id)
+                            .Select(m => new GenerateChatDiagnosisMessageEntry
+                            {
+                                Content = m.Content ?? "",
+                                IsAi = m.IsAI,
+                            })
+                            .ToListAsync();
+
+                        var response = await _llmService.GenerateChatDiagnosisAsync(
+                            chatDiagnosis.ChatId,
+                            chatDiagnosis.Id,
+                            messagesEntries
+                        );
+
+                        if (response is null)
+                        {
+                            throw new Exception("Response is null.");
+                        }
+
                         var diagnosis = await dbContext.ChatDiagnoses.FirstOrDefaultAsync(c =>
                             c.Id == chatDiagnosis.Id
                         );
+
                         if (diagnosis is null)
                         {
                             throw new Exception("Diagnosis not found.");
                         }
 
-                        // fake description
-                        diagnosis.Description =
-                            $"fake description for testing with a random number: {Random.Shared.Next()}";
+                        #region  set  diagnosis data
+
+                        if (response.IsSucceeded)
+                        {
+                            diagnosis.DiagnosedProblem = response.DiagnosedProblem;
+                            diagnosis.Reasoning = response.Reasoning;
+                            diagnosis.FailureReason = null;
+
+                            if (response.Prescription is null || !response.Prescription.Any())
+                            {
+                                throw new Exception("Prescription is null or empty.");
+                            }
+                            diagnosis.Prescriptions = response
+                                .Prescription.Select(
+                                    (p, i) =>
+                                        new ChatDiagnosisPrescription
+                                        {
+                                            Content = p,
+                                            OrderIndex = i + 1,
+                                        }
+                                )
+                                .ToList();
+                        }
+                        else
+                        {
+                            if (response.FailureReason is null)
+                            {
+                                throw new Exception("Failure reason is null.");
+                            }
+
+                            diagnosis.DiagnosedProblem = null;
+                            diagnosis.Reasoning = null;
+                            diagnosis.FailureReason = response.FailureReason;
+                        }
+
                         diagnosis.CompletedAtUtc = DateTime.UtcNow;
 
                         await dbContext.SaveChangesAsync();
 
+                        #endregion
                         await _hubContext
                             .Clients.Group(diagnosis.ChatId.ToString())
                             .NotifyChatDiagnosisReadyAsync(
                                 new NotifyChatDiagnosisReadyDto
                                 {
-                                    ChatId = diagnosis.ChatId,
-                                    ChatDiagnosisId = diagnosis.Id,
+                                    Id = diagnosis.Id,
+                                    DiagnosedProblem = diagnosis.DiagnosedProblem,
+                                    Reasoning = diagnosis.Reasoning,
+                                    Prescriptions = diagnosis
+                                        .Prescriptions.OrderBy(p => p.OrderIndex)
+                                        .Select(p => p.Content)
+                                        .ToList(),
+                                    FailureReason = diagnosis.FailureReason,
+                                    RequestedAtUtc = diagnosis.RequestedAtUtc,
+                                    CompletedAtUtc = diagnosis.CompletedAtUtc!.Value,
                                 }
                             );
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing voice file.");
+                        _logger.LogError(ex, "Error generating chat diagnosis.");
                     }
                     finally
                     {
-                        _llmProcessingManager.Release(request.ChatId);
-                        _aiResponseTracker.MarkResponseComplete(request.ChatId);
+                        _llmDiagnosesLocksManager.Release(request.ChatId);
+                        _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
                     }
                 });
 
@@ -853,14 +937,68 @@ public partial class ChatController : ControllerBase
             {
                 _llmDiagnosesLocksManager.Release(request.ChatId);
                 _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
-                return BadRequest("");
+                return BadRequest("Error generating chat diagnosis.");
             }
         }
         catch
         {
             _llmDiagnosesLocksManager.Release(request.ChatId);
             _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
-            return BadRequest("");
+
+            return BadRequest();
         }
+    }
+
+    [HttpDelete("delete-completed-chat-diagnosis")]
+    public async Task<IActionResult> DeleteCompletedChatDiagnosisAsync(
+        [FromQuery] DeleteCompletedChatDiagnosisRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var diagnosis = await _dbContext
+            .ChatDiagnoses.Include(x => x.Chat)
+            .FirstOrDefaultAsync(x =>
+                x.Id == request.ChatDiagnosisId
+                && x.Chat.PatientId == patientId
+                && x.CompletedAtUtc != null
+                && !x.IsDeleted
+            );
+
+        if (diagnosis is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Diagnosis not found." } });
+        }
+
+        diagnosis.IsDeleted = true;
+        await _dbContext.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpDelete("delete-completed-chat-diagnoses")]
+    public async Task<IActionResult> DeleteCompletedChatDiagnosesAsync(
+        [FromQuery] DeleteCompletedChatDiagnosesRequestDto request
+    )
+    {
+        var patientId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var chat = await _dbContext
+            .Chats.Include(x => x.ChatDiagnoses)
+            .FirstOrDefaultAsync(x =>
+                x.PatientId == patientId && x.Id == request.ChatId && !x.IsDeleted
+            );
+
+        if (chat is null)
+        {
+            return BadRequest(new { Errors = new List<string> { "Chat not found." } });
+        }
+        // mark all completed and not deleted diagnoses as deleted
+        foreach (
+            var diagnosis in chat.ChatDiagnoses.Where(x => x.CompletedAtUtc != null && !x.IsDeleted)
+        )
+        {
+            diagnosis.IsDeleted = true;
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok();
     }
 }
