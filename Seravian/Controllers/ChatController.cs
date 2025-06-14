@@ -920,7 +920,7 @@ public partial class ChatController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing voice file.");
+                        _logger.LogError(ex, "Error generating chat diagnosis.");
                     }
                     finally
                     {
@@ -937,7 +937,7 @@ public partial class ChatController : ControllerBase
             {
                 _llmDiagnosesLocksManager.Release(request.ChatId);
                 _aiDiagnosisTracker.MarkDiagnosisComplete(request.ChatId);
-                return BadRequest("");
+                return BadRequest("Error generating chat diagnosis.");
             }
         }
         catch
