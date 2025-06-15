@@ -12,7 +12,6 @@ using Seravian.DTOs.Patient;
 
 [Route("[controller]")]
 [ApiController]
-[Authorize(Roles = "Patient")]
 public class PatientController : ControllerBase
 {
     [Authorize(Roles = "Patient,Doctor")]
