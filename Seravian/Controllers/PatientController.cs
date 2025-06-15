@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Crypto.Digests;
 using Seravian.DTOs.Doctor;
+using Seravian.DTOs.Patient;
 
 [Route("[controller]")]
 [ApiController]
@@ -61,17 +62,4 @@ public class PatientController : ControllerBase
             )
         );
     }
-}
-
-public class QuestionAnswerResponseDto
-{
-    public int QuestionId { get; set; }
-    public string Question { get; set; }
-    public string Answer { get; set; }
-}
-
-public class GeneralMentalHealthDisordersAdvicesResponseDto
-{
-    public string Disorder { get; set; }
-    public List<string> Advices { get; set; }
 }
