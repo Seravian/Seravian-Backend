@@ -42,7 +42,7 @@ public class PatientController : ControllerBase
     public ActionResult<
         List<GeneralMentalHealthDisordersAdvicesResponseDto>
     > GeneralMentalHealthDisordersAdvices()
-    { //sugg
+    {
         var generalMentalHealthDisordersJsonPath = Path.Combine(
             "patient_helpful_ways",
             "mental_health_tips_by_disorder.json"
@@ -50,11 +50,13 @@ public class PatientController : ControllerBase
 
         if (!System.IO.File.Exists(generalMentalHealthDisordersJsonPath))
             return NotFound("File not found.");
+
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
+
         return Ok(
             JsonSerializer.Deserialize<List<GeneralMentalHealthDisordersAdvicesResponseDto>>(
                 System.IO.File.ReadAllText(generalMentalHealthDisordersJsonPath),
