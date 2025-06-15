@@ -43,6 +43,9 @@
     <None Update="ffmpeg\ffprobe.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+     <None Update="QuestionsAndAnswers/realistic_mental_health_100_questions.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
   </ItemGroup>
 
 </Project>
