@@ -15,6 +15,7 @@ using Seravian.DTOs.Patient;
 [Authorize(Roles = "Patient")]
 public class PatientController : ControllerBase
 {
+    [Authorize(Roles = "Patient,Doctor")]
     [HttpGet("questions-answers")]
     public ActionResult<List<QuestionAnswerResponseDto>> QuestionsAnswers()
     {
@@ -38,6 +39,7 @@ public class PatientController : ControllerBase
         );
     }
 
+    [Authorize(Roles = "Patient,Doctor")]
     [HttpGet("general-mental-health-disorders-Advices")]
     public ActionResult<
         List<GeneralMentalHealthDisordersAdvicesResponseDto>
