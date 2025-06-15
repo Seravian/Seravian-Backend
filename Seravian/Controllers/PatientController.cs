@@ -12,7 +12,7 @@ using Seravian.DTOs.Patient;
 
 [Route("[controller]")]
 [ApiController]
-// [Authorize(Roles = "Patient")]
+[Authorize(Roles = "Patient")]
 public class PatientController : ControllerBase
 {
     [HttpGet("questions-answers")]
