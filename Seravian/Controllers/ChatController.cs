@@ -281,7 +281,7 @@ public partial class ChatController : ControllerBase
 
     [HttpPost("send-client-request")]
     public async Task<ActionResult<SendClientRequestResponseDto>> SendClientRequest(
-        SendClientRequestRequestDto request
+        [FromBody] SendClientRequestRequestDto request
     )
     {
         var utcNow = DateTime.UtcNow;
@@ -384,7 +384,13 @@ public partial class ChatController : ControllerBase
         });
 
         return Ok(
-            new SendClientRequestResponseDto { MessageId = message.Id, TimestampUtc = utcNow }
+            new SendClientRequestResponseDto
+            {
+                ChatId = request.ChatId,
+                ClientMessageId = request.ClientMessageId,
+                MessageId = message.Id,
+                TimestampUtc = utcNow,
+            }
         );
     }
 
