@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Seravian.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250614215014_InitialCreate")]
+    [Migration("20250619164727_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
