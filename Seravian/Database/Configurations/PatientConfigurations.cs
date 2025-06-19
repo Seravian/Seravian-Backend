@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 class PatientConfigurations : IEntityTypeConfiguration<Patient>
@@ -13,5 +12,19 @@ class PatientConfigurations : IEntityTypeConfiguration<Patient>
             .WithOne()
             .HasForeignKey<Patient>(d => d.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // One-to-many relationship with Chat
+        builder
+            .HasMany(p => p.Chats)
+            .WithOne(c => c.Patient)
+            .HasForeignKey(c => c.PatientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One patient can have many session bookings
+        builder
+            .HasMany(p => p.SessionBookings)
+            .WithOne(sb => sb.Patient)
+            .HasForeignKey(sb => sb.PatientId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

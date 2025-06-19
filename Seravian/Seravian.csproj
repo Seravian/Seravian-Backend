@@ -22,10 +22,39 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="OneOf" Version="3.0.271" />
+    <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.0.30" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
   
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ffmpeg\" />
+    <Folder Include="Services\ChatHub\" />
+    <Folder Include="Services\Chat\" />
+    <Folder Include="Validation\Chat\" />
+    <Folder Include="Validation\ChatHub\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="QuestionsAndAnswers\realistic_mental_health_100_questions.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ffmpeg\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ffmpeg\ffprobe.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+     <None Update="patient_helpful_ways/realistic_mental_health_100_questions.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
+        <None Update="patient_helpful_ways/mental_health_tips_by_disorder.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
   </ItemGroup>
 
 </Project>

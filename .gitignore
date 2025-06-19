@@ -364,3 +364,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+chat.md
+
+#ffmpeg
+Seravian/ffmpeg/
+
+# Uploads
+Seravian/Uploads
+Seravian/patient_helpful_ways
+
+Endpoints Planning/

@@ -8,6 +8,8 @@ public class RefreshTokenConfig : IEntityTypeConfiguration<RefreshToken>
     {
         builder.HasKey(rt => rt.Id);
         builder.Property(rt => rt.Token).IsRequired();
+        builder.Property(x => x.ExpiresAtUtc).HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
         builder.HasOne(rt => rt.User).WithMany(u => u.RefreshTokens).HasForeignKey(rt => rt.UserId);
     }
 }

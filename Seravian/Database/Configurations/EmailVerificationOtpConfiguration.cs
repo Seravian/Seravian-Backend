@@ -9,6 +9,9 @@ public class EmailVerificationOtpConfiguration : IEntityTypeConfiguration<EmailV
         builder.Property(o => o.Code).HasMaxLength(16).IsRequired();
         builder.Property(o => o.IsConsumed).IsRequired();
         builder.Property(o => o.ExpiresAtUtc).IsRequired();
+
+        builder.Property(x => x.ExpiresAtUtc).HasConversion(UtcDateTimeConverter.DateTimeConverter);
+
         builder
             .HasOne(o => o.User)
             .WithMany(u => u.EmailVerificationOtps)

@@ -4,7 +4,7 @@ public class User
     public string Email { get; set; }
     public string? FullName { get; set; }
     public bool IsEmailVerified { get; set; }
-    public DateTime? EmailVerificationDate { get; set; }
+    public DateTime? EmailVerifiedAtUtc { get; set; }
     public string PasswordHash { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
