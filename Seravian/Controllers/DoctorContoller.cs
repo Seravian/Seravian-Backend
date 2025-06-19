@@ -157,13 +157,13 @@ public class DoctorController : ControllerBase
                 .Select(x => new GetDoctorVerificationRequestResponseDto
                 {
                     Id = x.Id,
-                    RequestedAtUtc = x.RequestedAtUtc,
+                    CreatedAtUtc = x.RequestedAtUtc,
                     Status = x.Status,
                     Title = x.Title,
                     Description = x.Description,
                     DeletedAtUtc = x.DeletedAtUtc,
                     ReviewedAtUtc = x.ReviewedAtUtc,
-                    RejectionNotes = x.RejectionNotes,
+                    RejectionNote = x.RejectionNote,
                     Attachments = x
                         .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
                         {
@@ -202,13 +202,13 @@ public class DoctorController : ControllerBase
             var response = new GetDoctorVerificationRequestResponseDto
             {
                 Id = verificationRequest.Id,
-                RequestedAtUtc = verificationRequest.RequestedAtUtc,
+                CreatedAtUtc = verificationRequest.RequestedAtUtc,
                 Status = verificationRequest.Status,
                 Title = verificationRequest.Title,
                 Description = verificationRequest.Description,
                 DeletedAtUtc = verificationRequest.DeletedAtUtc,
                 ReviewedAtUtc = verificationRequest.ReviewedAtUtc,
-                RejectionNotes = verificationRequest.RejectionNotes,
+                RejectionNote = verificationRequest.RejectionNote,
                 Attachments = verificationRequest
                     .Attachments.Select(a => new DoctorVerificationRequestAttachmentDto
                     {

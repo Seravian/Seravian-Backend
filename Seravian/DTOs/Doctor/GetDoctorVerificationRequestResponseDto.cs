@@ -2,8 +2,8 @@ namespace Seravian.DTOs.Doctor;
 
 public class GetDoctorVerificationRequestResponseDto
 {
-    public int Id { get; set; }
-    public DateTime RequestedAtUtc { get; set; }
+    public long Id { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
     public List<DoctorVerificationRequestAttachmentDto> Attachments { get; set; } = [];
     public int SessionPrice { get; set; }
     public RequestStatus Status { get; set; }
@@ -12,5 +12,5 @@ public class GetDoctorVerificationRequestResponseDto
     public DateTime? DeletedAtUtc { get; set; }
 
     public DateTime? ReviewedAtUtc { get; set; }
-    public string? RejectionNotes { get; set; }
+    public string? RejectionNote { get; set; }
 }

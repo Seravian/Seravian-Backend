@@ -1,7 +1,7 @@
 public class DoctorVerificationRequestAttachment
 {
     public Guid Id { get; set; }
-    public int DoctorVerificationRequestId { get; set; }
+    public long DoctorVerificationRequestId { get; set; }
     public virtual DoctorVerificationRequest DoctorVerificationRequest { get; set; }
     public string FileName { get; set; }
     public string FilePath { get; set; }
