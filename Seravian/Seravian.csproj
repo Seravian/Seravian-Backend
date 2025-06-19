@@ -37,12 +37,24 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="QuestionsAndAnswers\realistic_mental_health_100_questions.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="ffmpeg\ffmpeg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="ffmpeg\ffprobe.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+     <None Update="patient_helpful_ways/realistic_mental_health_100_questions.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
+        <None Update="patient_helpful_ways/mental_health_tips_by_disorder.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
   </ItemGroup>
 
 </Project>
