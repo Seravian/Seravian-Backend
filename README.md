@@ -27,15 +27,16 @@ The backend serves as a secure and intelligent middleware layer between mobile/w
 To build and run this project, make sure the following dependencies are installed:
 
 - ✅ [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
-- ✅ [FFmpeg](https://ffmpeg.org/download.html)
-  - Windows: [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
-  - Linux/macOS: `sudo apt install ffmpeg` or `brew install ffmpeg`
 - ✅ [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)
 - ✅ [EF Core CLI Tools](https://learn.microsoft.com/en-us/ef/core/cli/dotnet)
 
   ```bash
   dotnet tool install --global dotnet-ef
   ```
+
+- ✅ [FFmpeg](https://ffmpeg.org/download.html)
+  - Windows: [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
+  - Linux/macOS: `sudo apt install ffmpeg` or `brew install ffmpeg`
 
 ## 🧪 Running Locally
 
@@ -171,10 +172,10 @@ dotnet restore
 
 This backend repo is part of the **Seravian** GitHub organization, which includes:
 
-- `Seravian-Frontend` (Angular)
-- `Seravian-Backend` (ASP.NET Core)
-- `Seravian-Mobile` (Kotlin)
-- `Seravian-AI` (FastAPI + Python)
+- [`Seravian-Web`](https://github.com/Seravian/Seravian-Web) (Angular)
+- [`Seravian-Backend`](https://github.com/Seravian/Seravian-Backend) (ASP.NET Core)
+- [`Seravian-App`](https://github.com/Seravian/Seravian-App) (Kotlin – Android)
+- [`Seravian-AI`](https://github.com/Seravian/Seravian-AI) (FastAPI + Python)
 
 > 📌 **Note:** While the platform is a team project,  
 > 🧑‍💻 **this backend repo was fully developed by [Mohamed Saeed](https://github.com/mohamedsaeed138)**.
