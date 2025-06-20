@@ -184,4 +184,4 @@ This backend repo is part of the **Seravian** GitHub organization, which include
 
 ## 📜 License
 
-MIT License – see [`LICENSE`](./LICENSE)
+Elastic License v2.0 – see [`LICENSE`](./LICENSE)
