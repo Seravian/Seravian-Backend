@@ -31,7 +31,6 @@ To build and run this project, make sure the following dependencies are installe
   - Windows: [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
   - Linux/macOS: `sudo apt install ffmpeg` or `brew install ffmpeg`
 - ✅ [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)
-- ✅ [Visual Studio 2022+](https://visualstudio.microsoft.com/vs/) or [VS Code](https://code.visualstudio.com/) + C# Dev Kit
 - ✅ [EF Core CLI Tools](https://learn.microsoft.com/en-us/ef/core/cli/dotnet)
 
   ```bash
