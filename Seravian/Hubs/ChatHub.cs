@@ -1,39 +1,19 @@
-using System.Collections.Concurrent;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Seravian.DTOs.ChatHub;
-using TestAIModels;
 
 namespace Seravian.Hubs;
 
 [Authorize(Roles = "Patient")]
 public class ChatHub : Hub<IChatHubClient>
 {
-    private readonly IAIResponseTrackerService _aiResponseTracker;
-
-    private static readonly ConcurrentDictionary<string, Guid> _connectionUserMap = new();
-    private readonly ChatProcessingManager _llmProcessingManager;
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-
-    private readonly LLMService _llmService;
-
     private readonly ApplicationDbContext _applicationDbContext;
 
-    public ChatHub(
-        ChatProcessingManager llmProcessingManager,
-        LLMService llmService,
-        IAIResponseTrackerService aiResponseTracker,
-        ApplicationDbContext applicationDbContext,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory
-    )
+    public ChatHub(ApplicationDbContext applicationDbContext)
     {
-        _llmProcessingManager = llmProcessingManager;
-        _llmService = llmService;
-        _aiResponseTracker = aiResponseTracker;
         _applicationDbContext = applicationDbContext;
-        _dbContextFactory = dbContextFactory;
     }
 
     [HubMethodName("join-chat")]
@@ -49,20 +29,7 @@ public class ChatHub : Hub<IChatHubClient>
         )
             return;
 
-        _connectionUserMap[connectionId] = chatId;
         await Groups.AddToGroupAsync(connectionId, chatId.ToString());
-    }
-
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
-        var isConnectionExistsInMap = _connectionUserMap.TryGetValue(
-            Context.ConnectionId,
-            out var chatId
-        );
-        if (!isConnectionExistsInMap)
-            return;
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId.ToString());
-        _connectionUserMap.Remove(Context.ConnectionId, out _);
     }
 }
 
