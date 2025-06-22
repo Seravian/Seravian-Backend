@@ -16,20 +16,25 @@ public class ChatHub : Hub<IChatHubClient>
         _applicationDbContext = applicationDbContext;
     }
 
-    [HubMethodName("join-chat")]
-    public async Task JoinChat(JoinChatDto request)
+    public override async Task OnConnectedAsync()
     {
         var patientId = Guid.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-        var connectionId = Context.ConnectionId;
-        var chatId = request.ChatId;
+        var httpContext = Context.GetHttpContext();
+        var chatIdString = httpContext?.Request.Query["chatId"].ToString();
+
         if (
-            !await _applicationDbContext.Chats.AnyAsync(c =>
+            !Guid.TryParse(chatIdString, out Guid chatId)
+            || !await _applicationDbContext.Chats.AnyAsync(c =>
                 c.Id == chatId && c.PatientId == patientId && c.IsDeleted == false
             )
         )
+        {
+            Context.Abort(); // ❌ Chat doesn't belong to user chatId is invalid Guid
             return;
+        }
 
-        await Groups.AddToGroupAsync(connectionId, chatId.ToString());
+        await Groups.AddToGroupAsync(Context.ConnectionId, chatId.ToString());
+        await base.OnConnectedAsync();
     }
 }
 
